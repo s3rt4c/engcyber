@@ -28,6 +28,10 @@ Normalised, sanitised content will receive a fingerprint. Lesson generation will
 
 RSS, Atom, manual URL, manual text, and later extraction mechanisms are all adapters. Pages and lesson logic depend on the common boundary rather than on a particular publisher.
 
+## M1 source choices
+
+M1 discovers metadata through official RSS feeds only: CISA Cybersecurity Advisories (`https://www.cisa.gov/cybersecurity-advisories/all.xml`) for Cybersecurity News and Hugging Face Blog (`https://huggingface.co/blog/feed.xml`) for Artificial Intelligence. The feeds are fetched server-side with a 15-minute revalidation hint and a 10-second timeout; discovery does not invoke AI.
+
 ## Authentic content is not permanently simplified to B1
 
 The original text remains central. Simpler English and optional Turkish are temporary scaffolds; support should reduce as comprehension improves.
@@ -35,3 +39,7 @@ The original text remains central. Simpler English and optional Turkish are temp
 ## External content is untrusted
 
 Imported content is data, never authority. It must be sanitised before display, never executed, and isolated from system and developer instructions before any model request.
+
+## M1 local phrase persistence
+
+M1 uses a dedicated browser-local `PhraseStore` adapter. It stores a phrase, its context, attribution, content identity, and timestamp while deduplicating obvious repeats. This is temporary: migrate the same contract to Supabase when cross-device persistence, authentication, or multi-user support matters.

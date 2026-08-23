@@ -27,3 +27,7 @@ The learner sees authentic English first. A later sentence action can provide si
 ## Cost controls
 
 Discovery stores metadata only. A sanitised content fingerprint invalidates cached work if source text changes. A lesson generation fingerprint will incorporate that content fingerprint, learner level, and prompt version; it supports reusing a compatible generated lesson. Individual sentence actions may be cached only when their input sentence and action parameters are identical. Browser TTS remains local and has no per-request provider cost.
+
+## M1 implementation notes
+
+M1 uses CISA Cybersecurity Advisories and the Hugging Face Blog RSS feeds, fetched server-side with a 15-minute revalidation hint. Manual URL import validates the scheme, credentials, literal/resolved private addresses, redirects, response type, timeout, and size. DNS rebinding between lookup and connection remains an SSRF limitation of runtime `fetch`; deployment egress controls should remain the final network boundary. Raw HTML becomes plain readable text through server extraction and sanitization. OpenAI actions are explicit selection-only requests with fixed instructions and delimited article data; missing configuration does not affect discovery, reading, or TTS.

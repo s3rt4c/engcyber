@@ -6,7 +6,7 @@ Next.js application shell, typed domain model, source/lesson/error/TTS boundarie
 
 ## M1 — Discover & Reading
 
-Manual content intake and a first source adapter with metadata discovery. Add an authentic reading view with sentence selection, but no automatic lesson generation.
+Implemented, awaiting acceptance: manual URL/text intake; CISA and Hugging Face RSS discovery; safe extraction/sanitisation; authentic reading; explicit sentence help; browser TTS; and temporary browser-local phrase persistence. No automatic lesson generation or Supabase persistence.
 
 ## M2 — AI Lesson Engine
 

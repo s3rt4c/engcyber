@@ -10,7 +10,7 @@ Implemented, awaiting acceptance: manual URL/text intake; CISA and Hugging Face 
 
 ## M2 — AI Lesson Engine
 
-Server-side lesson generation initiated by the learner. Add simplified-English support, optional Turkish help, prompts that isolate untrusted source data, and sanitised rendering.
+Implemented, awaiting acceptance: explicit server-side structured lesson generation around sanitised content; local lesson cache; objective reading checks; and external ChatGPT Voice / writing prompts. Writing feedback and personal error memory remain M3 work.
 
 ## M3 — Writing & Error Memory
 

@@ -3,7 +3,6 @@ import "server-only";
 export interface ServerEnvironment {
   supabaseUrl: string;
   supabaseAnonKey: string;
-  openAiApiKey: string;
 }
 
 type EnvironmentSource = Record<string, string | undefined>;
@@ -22,6 +21,5 @@ export function readServerEnvironment(source: EnvironmentSource): ServerEnvironm
   return {
     supabaseUrl: required(source, "SUPABASE_URL"),
     supabaseAnonKey: required(source, "SUPABASE_ANON_KEY"),
-    openAiApiKey: required(source, "OPENAI_API_KEY"),
   };
 }

@@ -1,0 +1,29 @@
+# M0 architecture
+
+## Boundaries
+
+`src/domain` owns stable concepts and interfaces. `src/app` renders the shell. `src/server` owns code that may access server credentials. `src/server/env.ts` is marked `server-only`, so importing it from a Client Component fails the Next.js build.
+
+```
+SourceAdapter -> FeedItem metadata -> learner request -> ContentExtractor
+                                         |                    |
+                                     no AI work       ExtractedContent (raw)
+                                                              |
+                                                       ContentSanitizer
+                                                              |
+                                                   Content (sanitised) -> LessonGenerator
+```
+
+An adapter can discover metadata through RSS, Atom, a manual URL, manual text, or a future crawler. Extraction is separate. The first crawler is intentionally out of M0.
+
+## Trust boundary
+
+Publisher material—including scripts, exploit snippets, shell commands, HTML, and prompt-like text—is untrusted. M1 must validate manual URLs and apply SSRF protections before fetching. It must parse raw output into `ExtractedContent`, then sanitise it before persistence or rendering, producing `Content`. Only `Content` may reach lesson generation. Model requests must use fixed application instructions and pass sanitised content in a clearly delimited data field; imported text cannot select tools, alter policy, or execute commands.
+
+## Learning progression
+
+The learner sees authentic English first. A later sentence action can provide simpler English and then optional Turkish support, while retaining the original sentence. Categories and content mix are values in the domain layer so technical/IELTS balance can become configuration instead of an architectural constant.
+
+## Cost controls
+
+Discovery stores metadata only. A sanitised content fingerprint invalidates cached work if source text changes. A lesson generation fingerprint will incorporate that content fingerprint, learner level, and prompt version; it supports reusing a compatible generated lesson. Individual sentence actions may be cached only when their input sentence and action parameters are identical. Browser TTS remains local and has no per-request provider cost.

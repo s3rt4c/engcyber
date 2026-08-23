@@ -1,4 +1,4 @@
-import type { Content, ErrorPattern, ExtractedContent, FeedItem, Lesson, LessonSentence, Phrase, Source } from "@/domain/models";
+import type { Content, ErrorPattern, ExtractedContent, FeedItem, Lesson, LessonSentence, Source } from "@/domain/models";
 import type { ContentProcessingRequest, LearningSupportLevel } from "@/domain/learning";
 
 export interface SourceAdapter { readonly source: Source; discover(): Promise<readonly FeedItem[]>; }
@@ -6,6 +6,7 @@ export interface ContentExtractor { extract(input: { url?: string; rawText?: str
 export interface ContentSanitizer { sanitize(input: ExtractedContent): Promise<Content>; }
 export interface LessonGenerator { generate(input: { request: Extract<ContentProcessingRequest, { kind: "lesson_requested" }>; content: Content; learnerLevel: "B1" | "B2" | "C1"; }): Promise<Lesson>; }
 export interface SentenceActionService { act(input: { sentence: LessonSentence; action: "simplify" | "explain" | "translate" | "listen" | "grammar" | "save_phrase" | "ask_ai"; supportLevel: LearningSupportLevel; }): Promise<void>; }
-export interface PhraseStore { save(phrase: Phrase): Promise<void>; }
+export interface SavedPhrase { phrase: string; context: string; sourceTitle: string; sourceUrl: string | null; contentId: string | null; savedAt: string; }
+export interface PhraseStore { save(phrase: SavedPhrase): Promise<"saved" | "duplicate" | "unavailable">; }
 export interface ErrorTracker { record(pattern: ErrorPattern, context: string): Promise<void>; }
 export interface BrowserTts { speak(text: string, rate?: number): void; stop(): void; }

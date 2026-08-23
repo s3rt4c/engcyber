@@ -1,6 +1,6 @@
 # Database and domain model proposal
 
-M0 defines types only. PostgreSQL tables are introduced with migrations when M1 adds persistence.
+M0 defines types only. M1 deliberately adds no PostgreSQL migrations: saved phrases use a browser-local `PhraseStore` adapter until cross-device persistence, authentication, or multi-user support is needed.
 
 | Table | Purpose | Important relationships |
 | --- | --- | --- |

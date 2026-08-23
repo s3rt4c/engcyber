@@ -3,14 +3,15 @@ import { describe, expect, it } from "vitest";
 
 import Home from "@/app/page";
 
-describe("M0 home shell", () => {
-  it("shows the four planned learning areas without offering automatic lessons", () => {
+describe("M1 discover shell", () => {
+  it("shows authentic-content discovery without offering automatic lessons", () => {
     const html = renderToStaticMarkup(<Home />);
 
     expect(html).toContain("Discover");
     expect(html).toContain("My Content");
-    expect(html).toContain("Review");
-    expect(html).toContain("Progress");
-    expect(html).toContain("Lessons are created only when you choose an item.");
+    expect(html).toContain("Discover authentic English");
+    expect(html).toContain("metadata is fetched without generating lessons or calling AI");
+    expect(html).toContain("Cybersecurity News");
+    expect(html).toContain("Artificial Intelligence");
   });
 });

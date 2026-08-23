@@ -1,0 +1,4 @@
+import { NextRequest, NextResponse } from "next/server";
+import { runSentenceAction } from "@/server/openai/sentence-actions";
+import { isSentenceAction } from "@/domain/sentence-actions";
+export async function POST(request: NextRequest) { try { const body = await request.json() as { action?: unknown; selectedText?: unknown; surroundingContext?: unknown }; if (!isSentenceAction(body.action) || typeof body.selectedText !== "string") return NextResponse.json({ error: "Select text and choose a supported action." }, { status: 400 }); return NextResponse.json({ result: await runSentenceAction({ action: body.action, selectedText: body.selectedText, surroundingContext: typeof body.surroundingContext === "string" ? body.surroundingContext : "" }) }); } catch (error) { const message = error instanceof Error ? error.message : "AI support failed."; return NextResponse.json({ error: message }, { status: message.includes("not configured") ? 503 : 502 }); } }

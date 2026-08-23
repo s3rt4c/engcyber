@@ -1,6 +1,6 @@
 # Database and domain model proposal
 
-M0 defines types only. M1 deliberately adds no PostgreSQL migrations: saved phrases use a browser-local `PhraseStore` adapter until cross-device persistence, authentication, or multi-user support is needed.
+M0 defines types only. M1 deliberately adds no PostgreSQL migrations: saved phrases use a browser-local `PhraseStore` adapter until cross-device persistence, authentication, or multi-user support is needed. M2 uses the same temporary approach for a versioned browser-local `LessonStore`; no Supabase migration is introduced.
 
 | Table | Purpose | Important relationships |
 | --- | --- | --- |
@@ -18,6 +18,6 @@ M0 defines types only. M1 deliberately adds no PostgreSQL migrations: saved phra
 | `voice_session_reports` | Imported external speaking summaries. | Future belongs to `users`; contributes occurrences. |
 | `progress_snapshots` | Periodic, evidence-based metrics. | Future belongs to `users`. |
 
-Every learner-owned table should receive a nullable-then-required `user_id` migration when multi-user support begins. M0 remains single-user and avoids premature authentication.
+Every learner-owned table should receive a nullable-then-required `user_id` migration when multi-user support begins. M0–M2 remain single-user and avoid premature authentication.
 
-Raw extraction output is an in-memory boundary, not a renderable content record. M1 must sanitise it before storing `contents`; it should keep only the minimum audit data necessary for troubleshooting. A later M2 implementation can cache reusable sentence actions with a sentence/action fingerprint without adding that persistence shape during M0.
+Raw extraction output is an in-memory boundary, not a renderable content record. M1 must sanitise it before storing `contents`; it should keep only the minimum audit data necessary for troubleshooting. Reusable sentence-action caching with a sentence/action fingerprint remains a later optimisation and does not add a persistence shape during M2.

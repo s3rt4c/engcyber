@@ -9,17 +9,15 @@ describe("readServerEnvironment", () => {
     );
   });
 
-  it("returns the server integration settings when required values are provided", () => {
+  it("returns Supabase settings without requiring an inactive AI provider's credentials", () => {
     expect(
       readServerEnvironment({
         SUPABASE_URL: "https://project.supabase.co",
         SUPABASE_ANON_KEY: "anon-key",
-        OPENAI_API_KEY: "server-key",
       }),
     ).toEqual({
       supabaseUrl: "https://project.supabase.co",
       supabaseAnonKey: "anon-key",
-      openAiApiKey: "server-key",
     });
   });
 });

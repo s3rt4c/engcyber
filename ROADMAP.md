@@ -14,11 +14,11 @@ Accepted: explicit server-side structured lesson generation around sanitised con
 
 ## M3 — Writing & Error Memory
 
-Implemented, awaiting acceptance: explicit two-attempt writing analysis, concise priority feedback, stable application-derived personal error patterns, false-positive dismissal, and browser-local writing/error-memory persistence. Voice-session ingestion remains later work.
+Accepted: explicit two-attempt writing analysis, concise priority feedback, stable application-derived personal error patterns, false-positive dismissal, and browser-local writing/error-memory persistence. Voice-session ingestion remains later work.
 
-## M4 — Review / Spaced Repetition
+## M4 — Error Pattern Review & Spaced Repetition
 
-Phrase and error-pattern reviews with lightweight scheduling and active-vocabulary practice.
+Implemented, awaiting acceptance: Personal Error Memory patterns only; deterministic review scheduling, correction/free-production practice, and mastery or returned-error reactivation. Saved phrase SRS, vocabulary SRS, and phrase flashcards are deferred to a later milestone.
 
 ## M5 — Listening
 

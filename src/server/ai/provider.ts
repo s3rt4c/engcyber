@@ -1,7 +1,7 @@
 import "server-only";
 
 export type AiProviderId = "gemini" | "openai";
-export type AiCapability = "sentence_action" | "lesson_generation" | "writing_analysis";
+export type AiCapability = "sentence_action" | "lesson_generation" | "writing_analysis" | "review_evaluation";
 
 export interface ResolvedAiProvider {
   readonly id: AiProviderId;
@@ -48,7 +48,7 @@ export function resolveAiProvider(env: Record<string, string | undefined> = proc
   const variables = providerVariables(id, env);
   const name = providerName(id);
   if (!variables.apiKey) throw new Error(`${name} configuration requires ${id === "gemini" ? "GEMINI_API_KEY" : "OPENAI_API_KEY"}.`);
-  if (capability === "sentence_action" && !variables.actionModel) {
+  if ((capability === "sentence_action" || capability === "review_evaluation") && !variables.actionModel) {
     throw new Error(`${name} sentence actions require ${id === "gemini" ? "GEMINI_ACTION_MODEL" : "OPENAI_MODEL"}.`);
   }
   if ((capability === "lesson_generation" || capability === "writing_analysis") && !variables.lessonModel) {

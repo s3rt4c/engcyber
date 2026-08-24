@@ -6,6 +6,8 @@ M3 still adds no PostgreSQL migration. It introduces browser-local `WritingSessi
 
 M4 also adds no PostgreSQL migration. Its separate browser-local `ReviewStore` would later map to `review_items` and `review_events`: one `error_pattern` item per active pattern, deterministic stage/due/lapse state, and metadata-only events. It stores neither article bodies nor review answers. Phrase review has no persistence shape in M4 and remains deferred.
 
+M5 also adds no PostgreSQL migration. Its separate browser-local `ListeningStore` would later map to `listening_sessions`, `listening_exercises`, `listening_attempts`, and `shadowing_events`: selected bounded exercise sentences, compact alignment counts/status, and explicit repetition timestamps. It does not store full article text, raw learner dictation, provider responses, speech recordings, or pronunciation scores. The local MVP retains 20 sessions and 200 combined attempt/shadowing events.
+
 | Table | Purpose | Important relationships |
 | --- | --- | --- |
 | `sources` | Configured source identity, adapter kind, and optional endpoint. | One-to-many `feed_items`. |
@@ -19,6 +21,7 @@ M4 also adds no PostgreSQL migration. Its separate browser-local `ReviewStore` w
 | `error_patterns` | Stable recurring pattern keys and lifecycle. | Future belongs to `users`; has many occurrences. |
 | `error_occurrences` | Evidence for an error pattern. | Belongs to `error_patterns` and an activity. |
 | `review_items` | Scheduled Error Pattern review work in M4. | Future belongs to `users`; `source_type` supports a later phrase source without unifying domains now. |
+| `listening_sessions` / `listening_exercises` / `listening_attempts` / `shadowing_events` | Browser-local M5 listening practice evidence. | Future belongs to `users`; exercises retain only selected bounded sentence text and attempts exclude typed dictation. |
 | `voice_session_reports` | Imported external speaking summaries. | Future belongs to `users`; contributes occurrences. |
 | `progress_snapshots` | Periodic, evidence-based metrics. | Future belongs to `users`. |
 

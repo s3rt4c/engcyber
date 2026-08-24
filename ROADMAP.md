@@ -18,11 +18,11 @@ Accepted: explicit two-attempt writing analysis, concise priority feedback, stab
 
 ## M4 — Error Pattern Review & Spaced Repetition
 
-Implemented, awaiting acceptance: Personal Error Memory patterns only; deterministic review scheduling, correction/free-production practice, and mastery or returned-error reactivation. Saved phrase SRS, vocabulary SRS, and phrase flashcards are deferred to a later milestone.
+Accepted: Personal Error Memory patterns only; deterministic review scheduling, correction/free-production practice, and mastery or returned-error reactivation. Saved phrase SRS, vocabulary SRS, and phrase flashcards are deferred to a later milestone.
 
 ## M5 — Listening
 
-Browser TTS controls first: sentence playback, speed, replay, and shadowing.
+Implemented, awaiting acceptance: deterministic listening sessions from saved lesson text, browser-only TTS, local dictation alignment/scoring, and unscored shadowing. No speech recognition, paid TTS, listening SRS, podcast ingestion, or provider calls are part of M5.
 
 ## M6 — Source Expansion
 

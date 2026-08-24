@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { createBrowserPhraseStore } from "@/client/local-phrase-store";
 import { gradeReadingQuestion, type StoredLesson } from "@/domain/lesson";
 import type { Content } from "@/domain/models";
@@ -16,6 +17,7 @@ export function LessonPanel({ storedLesson, content }: { storedLesson: StoredLes
   };
   return <section className="mx-auto max-w-3xl px-6 pb-12" aria-label="Generated lesson">
     <p className="text-sm text-cyan-300">Generated from the authentic article{storedLesson.sourceTruncated ? " (bounded source excerpt)" : ""}.</p>
+    <Link className="mt-4 inline-flex rounded border border-cyan-400/50 px-4 py-2 text-sm font-medium text-cyan-200" href={`/listening?lesson=${encodeURIComponent(storedLesson.generationFingerprint)}`}>Practice Listening</Link>
     <h2 className="mt-6 text-2xl font-semibold">Overview</h2><p className="mt-3 leading-7 text-slate-200">{storedLesson.lesson.overview}</p>
     <h2 className="mt-10 text-2xl font-semibold">Key phrases</h2><div className="mt-4 grid gap-4">{storedLesson.lesson.keyPhrases.map((phrase) => <article className="rounded-xl border border-slate-800 bg-slate-900 p-4" key={phrase.phrase}><div className="flex flex-wrap items-start justify-between gap-3"><h3 className="font-semibold text-cyan-200">{phrase.phrase}</h3><button className="rounded border border-slate-600 px-3 py-1 text-sm" onClick={() => savePhrase(phrase)}>Save phrase</button></div><p className="mt-2 text-sm">{phrase.meaningSimpleEnglish}</p><p className="mt-1 text-sm text-slate-400">Turkish: {phrase.meaningTurkish}</p><p className="mt-3 text-sm text-slate-300">In article: {phrase.articleContext}</p><p className="mt-2 text-sm text-slate-300">Example: {phrase.exampleSentence}</p><p className="mt-2 text-sm text-slate-400">Why useful: {phrase.whyUseful}</p></article>)}</div>{notice && <p className="mt-3 text-sm text-amber-200">{notice}</p>}
     <h2 className="mt-10 text-2xl font-semibold">Difficult sentences</h2><div className="mt-4 space-y-4">{storedLesson.lesson.difficultSentences.map((sentence) => <article className="rounded-xl border border-slate-800 p-4" key={sentence.original}><p className="font-medium">Original: {sentence.original}</p><p className="mt-2">Simpler English: {sentence.simplifiedEnglish}</p><p className="mt-2 text-sm text-slate-400">Vocabulary: {sentence.importantVocabulary.join(", ")}</p><p className="mt-2 text-sm text-slate-300">{sentence.languageNote}</p></article>)}</div>

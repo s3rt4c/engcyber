@@ -44,4 +44,12 @@ describe("LocalLessonStore", () => {
     await expect(store.get("sha256:0")).resolves.toBeNull();
     await expect(store.get("sha256:20")).resolves.not.toBeNull();
   });
+
+  it("lists cached lessons by most recently accessed so local listening can choose one without generation", async () => {
+    const values = new Map<string, string>();
+    const store = new LocalLessonStore({ getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) });
+    await store.save({ ...lesson("sha256:older"), lastAccessedAt: "2026-08-24T00:00:00.000Z" });
+    await store.save({ ...lesson("sha256:newer"), lastAccessedAt: "2026-08-25T00:00:00.000Z" });
+    await expect(store.list()).resolves.toMatchObject([{ generationFingerprint: "sha256:newer" }, { generationFingerprint: "sha256:older" }]);
+  });
 });

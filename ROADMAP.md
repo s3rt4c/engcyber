@@ -6,15 +6,15 @@ Next.js application shell, typed domain model, source/lesson/error/TTS boundarie
 
 ## M1 — Discover & Reading
 
-Implemented, awaiting acceptance: manual URL/text intake; CISA and Hugging Face RSS discovery; safe extraction/sanitisation; authentic reading; explicit sentence help; browser TTS; and temporary browser-local phrase persistence. No automatic lesson generation or Supabase persistence.
+Accepted: manual URL/text intake; CISA and Hugging Face RSS discovery; safe extraction/sanitisation; authentic reading; explicit sentence help; browser TTS; and temporary browser-local phrase persistence. No automatic lesson generation or Supabase persistence.
 
 ## M2 — AI Lesson Engine
 
-Implemented, awaiting acceptance: explicit server-side structured lesson generation around sanitised content; local lesson cache; objective reading checks; and external ChatGPT Voice / writing prompts. Writing feedback and personal error memory remain M3 work.
+Accepted: explicit server-side structured lesson generation around sanitised content; local lesson cache; objective reading checks; and external ChatGPT Voice / writing prompts.
 
 ## M3 — Writing & Error Memory
 
-Writing attempts, focused feedback, stable personal error pattern keys, and imported ChatGPT Voice session reports.
+Implemented, awaiting acceptance: explicit two-attempt writing analysis, concise priority feedback, stable application-derived personal error patterns, false-positive dismissal, and browser-local writing/error-memory persistence. Voice-session ingestion remains later work.
 
 ## M4 — Review / Spaced Repetition
 

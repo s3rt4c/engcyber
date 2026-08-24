@@ -4,10 +4,12 @@ import type { Content } from "@/domain/models";
 import type { ExplicitActionInput } from "@/domain/sentence-actions";
 import type { LearnerProfile } from "@/domain/learner-profile";
 import type { GeneratedLesson } from "@/domain/lesson";
+import type { GeneratedWritingFeedback, WritingAnalysisInput } from "@/domain/writing";
 import type { ResolvedAiProvider } from "@/server/ai/provider";
 import { retryTransientAiOperation } from "@/server/ai/retry";
 import { generateLessonDraft } from "@/server/openai/lesson-generator";
 import { runSentenceAction } from "@/server/openai/sentence-actions";
+import { analyzeWritingDraft } from "@/server/openai/writing-analyzer";
 
 export interface OpenAiProvider {
   readonly id: "openai";
@@ -15,6 +17,7 @@ export interface OpenAiProvider {
   readonly lessonModel: string;
   runSentenceAction(input: ExplicitActionInput): Promise<string>;
   generateLesson(content: Content, learnerProfile?: LearnerProfile): Promise<GeneratedLesson>;
+  analyzeWriting(input: WritingAnalysisInput): Promise<GeneratedWritingFeedback>;
 }
 
 export function createOpenAiProvider(configuration: ResolvedAiProvider): OpenAiProvider {
@@ -30,5 +33,6 @@ export function createOpenAiProvider(configuration: ResolvedAiProvider): OpenAiP
     lessonModel: configuration.lessonModel,
     runSentenceAction: async (input) => (await retryTransientAiOperation(() => runSentenceAction(input, env))).value,
     generateLesson: async (content, learnerProfile) => (await retryTransientAiOperation(() => generateLessonDraft(content, { learnerProfile, env }))).value,
+    analyzeWriting: async (input) => (await retryTransientAiOperation(() => analyzeWritingDraft(input, env))).value,
   };
 }

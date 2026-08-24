@@ -14,7 +14,7 @@ describe("active AI runtime", () => {
       {
         gemini: (configuration) => ({
           id: "gemini", actionModel: configuration.actionModel, lessonModel: configuration.lessonModel,
-          runSentenceAction: async () => "support", generateLesson: async () => { throw new Error("not called"); },
+          runSentenceAction: async () => "support", generateLesson: async () => { throw new Error("not called"); }, analyzeWriting: async () => { throw new Error("not called"); },
         }),
         openai: () => { throw new Error("OpenAI must not be selected"); },
       },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { retryTransientAiOperation } from "@/server/ai/retry";
+import { retryTransientAiOperation, withAiAttemptTimeout } from "@/server/ai/retry";
 
 describe("transient AI retry boundary", () => {
   it("returns the successful second attempt after one 503", async () => {
@@ -75,5 +75,9 @@ describe("transient AI retry boundary", () => {
     )).rejects.toEqual({ status: 400 });
 
     expect(calls).toBe(1);
+  });
+
+  it("converts a stalled provider attempt into the recognized transient timeout code", async () => {
+    await expect(withAiAttemptTimeout(new Promise<never>(() => undefined), 1, async () => undefined)).rejects.toMatchObject({ code: "ETIMEDOUT" });
   });
 });

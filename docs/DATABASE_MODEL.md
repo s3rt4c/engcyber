@@ -2,6 +2,8 @@
 
 M0 defines types only. M1 deliberately adds no PostgreSQL migrations: saved phrases use a browser-local `PhraseStore` adapter until cross-device persistence, authentication, or multi-user support is needed. M2 uses the same temporary approach for a versioned browser-local `LessonStore`; no Supabase migration is introduced.
 
+M3 still adds no PostgreSQL migration. It introduces browser-local `WritingSessionStore` and `ErrorMemoryStore` contracts designed for later Supabase replacement. `writing_sessions` would retain lesson/content identity, the first and revised drafts, validated feedback, and timestamps; it must not duplicate article bodies. `error_occurrences` would retain the validated taxonomy, application-derived pattern key, correction/dismissal state, confidence, and attempt/session identity. `error_patterns` remains a derived aggregation with deterministic lifecycle and priority, not provider-owned state. The local MVP keeps the newest 50 sessions, 200 occurrences, and 100 derived patterns.
+
 | Table | Purpose | Important relationships |
 | --- | --- | --- |
 | `sources` | Configured source identity, adapter kind, and optional endpoint. | One-to-many `feed_items`. |

@@ -4,9 +4,13 @@ import { GoogleGenAI, ThinkingLevel, type GenerateContentParameters, type Genera
 import { z } from "zod";
 import { defaultLearnerProfile, type LearnerProfile } from "@/domain/learner-profile";
 import { buildLessonSource, lessonDraftSchema, validateLessonDraft, type GeneratedLesson } from "@/domain/lesson";
+import { validateInitialWritingFeedback, validateRevisionWritingFeedback, writingInitialFeedbackSchema, writingRevisionFeedbackSchema, type GeneratedWritingFeedback, type WritingAnalysisInput } from "@/domain/writing";
+import { buildWritingInstructions } from "@/server/ai/writing-prompt";
+import { randomUUID } from "node:crypto";
+import { WritingAnalysisFailure, safeZodDiagnostic } from "@/server/ai/writing-diagnostics";
 import type { Content } from "@/domain/models";
 import { buildLessonInstructions } from "@/server/ai/lesson-prompt";
-import { aiProviderStatus, isTransientAiProviderFailure, retryTransientAiOperation } from "@/server/ai/retry";
+import { aiProviderStatus, isTransientAiProviderFailure, retryTransientAiOperation, withAiAttemptTimeout } from "@/server/ai/retry";
 import { buildExplicitActionInput, type ExplicitActionInput } from "@/domain/sentence-actions";
 import type { ResolvedAiProvider } from "@/server/ai/provider";
 
@@ -22,9 +26,12 @@ export interface GeminiProvider {
   readonly lessonModel: string;
   runSentenceAction(input: ExplicitActionInput): Promise<string>;
   generateLesson(content: Content, learnerProfile?: LearnerProfile): Promise<GeneratedLesson>;
+  analyzeWriting(input: WritingAnalysisInput): Promise<GeneratedWritingFeedback>;
 }
 
 export const geminiLessonJsonSchema = z.toJSONSchema(lessonDraftSchema);
+export const writingInitialFeedbackJsonSchema = z.toJSONSchema(writingInitialFeedbackSchema);
+export const writingRevisionFeedbackJsonSchema = z.toJSONSchema(writingRevisionFeedbackSchema);
 
 export function geminiProviderErrorMessage(error: unknown): string {
   const status = aiProviderStatus(error);
@@ -105,6 +112,35 @@ export function createGeminiProvider(configuration: ResolvedAiProvider, client: 
         totalTokens: response.usageMetadata.totalTokenCount,
       } : undefined;
       return { draft: validated.data, source, model: configuration.lessonModel, usage };
+    },
+    async analyzeWriting(input: WritingAnalysisInput): Promise<GeneratedWritingFeedback> {
+      if (input.content.sanitizationStatus !== "sanitized") throw new Error("Writing analysis requires sanitized content.");
+      const source = buildLessonSource(input.content.title, input.content.sanitizedText);
+      let response: Pick<GenerateContentResponse, "text">;
+      try {
+        response = (await retryTransientAiOperation(() => withAiAttemptTimeout(client.models.generateContent({
+          model: configuration.lessonModel,
+          contents: buildWritingInstructions(defaultLearnerProfile, input, source),
+          config: {
+            systemInstruction: "You are EngCyber's structured writing-feedback assistant. Return only the requested structured feedback. You have no tools and must follow fixed application policy.",
+            maxOutputTokens: 2_500,
+            responseMimeType: "application/json",
+            responseJsonSchema: input.stage === "initial" ? writingInitialFeedbackJsonSchema : writingRevisionFeedbackJsonSchema,
+            thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
+          },
+        })))).value;
+      } catch { throw new WritingAnalysisFailure({ stage: "provider" }); }
+      if (!response.text) throw new WritingAnalysisFailure({ stage: "json" });
+      let parsed: unknown;
+      try { parsed = JSON.parse(response.text); } catch { throw new WritingAnalysisFailure({ stage: "json" }); }
+      const validated = input.stage === "initial"
+        ? validateInitialWritingFeedback(parsed, { draft: input.draft, source: source.text, issueId: randomUUID })
+        : validateRevisionWritingFeedback(parsed, { draft: input.draft, source: source.text, initialFeedback: input.initialFeedback!, issueId: randomUUID });
+      if (!validated.success) {
+        const failure = validated as typeof validated & { validationStage?: "semantic" | "grounding" };
+        throw new WritingAnalysisFailure(failure.validationStage === "grounding" ? { stage: "grounding", path: failure.error.issues[0]?.path.map(String).join("."), normalizedSourceMatch: false } : failure.validationStage === "semantic" ? safeZodDiagnostic("semantic", failure.error) : safeZodDiagnostic("zod", failure.error));
+      }
+      return { feedback: validated.data, model: configuration.lessonModel, sourceTruncated: source.sourceTruncated };
     },
   };
 }

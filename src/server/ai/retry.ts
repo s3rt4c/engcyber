@@ -17,6 +17,7 @@ export interface TransientRetryOptions {
 const transientStatuses = new Set([408, 429, 500, 502, 503, 504]);
 const transientNetworkCodes = new Set(["ECONNABORTED", "ECONNREFUSED", "ECONNRESET", "ENETDOWN", "ENETUNREACH", "ETIMEDOUT"]);
 const maximumAttempts = 3;
+export const aiAttemptTimeoutMilliseconds = 20_000;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null ? value as Record<string, unknown> : null;
@@ -56,6 +57,12 @@ export function isTransientAiProviderFailure(error: unknown): boolean {
 
 function defaultWait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+/** Converts a stalled provider operation into the existing retry-classified ETIMEDOUT failure. */
+export async function withAiAttemptTimeout<T>(operation: Promise<T>, milliseconds = aiAttemptTimeoutMilliseconds, wait: (milliseconds: number) => Promise<void> = defaultWait): Promise<T> {
+  const timeout = wait(milliseconds).then(() => Promise.reject(Object.assign(new Error("AI provider request timed out."), { code: "ETIMEDOUT" })));
+  return Promise.race([operation, timeout]);
 }
 
 function retryDelayMilliseconds(retryNumber: number, random: () => number): number {

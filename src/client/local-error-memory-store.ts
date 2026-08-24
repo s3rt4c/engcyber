@@ -77,6 +77,13 @@ export class LocalErrorMemoryStore {
     return this.write(envelope.occurrences.map((occurrence) => known.has(occurrence.id) && !occurrence.dismissed ? { ...occurrence, correctedAt } : occurrence), envelope.patterns);
   }
 
+  async setReviewStatus(patternKey: string, status: "mastered" | "needs_practice"): Promise<boolean> {
+    const envelope = this.read();
+    if (!envelope || !envelope.patterns.some((pattern) => pattern.patternKey === patternKey)) return false;
+    const previousPatterns = envelope.patterns.map((pattern) => pattern.patternKey === patternKey ? { ...pattern, reviewStatus: status, reviewStatusUpdatedAt: this.now() } : pattern);
+    return this.write(envelope.occurrences, previousPatterns);
+  }
+
   async dismiss(id: string): Promise<boolean> {
     const envelope = this.read();
     if (!envelope) return false;

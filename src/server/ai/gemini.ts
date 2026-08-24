@@ -6,6 +6,7 @@ import { defaultLearnerProfile, type LearnerProfile } from "@/domain/learner-pro
 import { buildLessonSource, lessonDraftSchema, validateLessonDraft, type GeneratedLesson } from "@/domain/lesson";
 import { validateInitialWritingFeedback, validateRevisionWritingFeedback, writingInitialFeedbackSchema, writingRevisionFeedbackSchema, type GeneratedWritingFeedback, type WritingAnalysisInput } from "@/domain/writing";
 import { buildWritingInstructions } from "@/server/ai/writing-prompt";
+import { buildReviewEvaluationInstructions } from "@/server/ai/review-prompt";
 import { randomUUID } from "node:crypto";
 import { WritingAnalysisFailure, safeZodDiagnostic } from "@/server/ai/writing-diagnostics";
 import type { Content } from "@/domain/models";
@@ -13,6 +14,7 @@ import { buildLessonInstructions } from "@/server/ai/lesson-prompt";
 import { aiProviderStatus, isTransientAiProviderFailure, retryTransientAiOperation, withAiAttemptTimeout } from "@/server/ai/retry";
 import { buildExplicitActionInput, type ExplicitActionInput } from "@/domain/sentence-actions";
 import type { ResolvedAiProvider } from "@/server/ai/provider";
+import { reviewEvaluationSchema, type ReviewEvaluation, type ReviewEvaluationInput } from "@/domain/review";
 
 export interface GeminiClient {
   readonly models: {
@@ -27,11 +29,13 @@ export interface GeminiProvider {
   runSentenceAction(input: ExplicitActionInput): Promise<string>;
   generateLesson(content: Content, learnerProfile?: LearnerProfile): Promise<GeneratedLesson>;
   analyzeWriting(input: WritingAnalysisInput): Promise<GeneratedWritingFeedback>;
+  evaluateReview(input: ReviewEvaluationInput): Promise<ReviewEvaluation>;
 }
 
 export const geminiLessonJsonSchema = z.toJSONSchema(lessonDraftSchema);
 export const writingInitialFeedbackJsonSchema = z.toJSONSchema(writingInitialFeedbackSchema);
 export const writingRevisionFeedbackJsonSchema = z.toJSONSchema(writingRevisionFeedbackSchema);
+export const reviewEvaluationJsonSchema = z.toJSONSchema(reviewEvaluationSchema);
 
 export function geminiProviderErrorMessage(error: unknown): string {
   const status = aiProviderStatus(error);
@@ -141,6 +145,28 @@ export function createGeminiProvider(configuration: ResolvedAiProvider, client: 
         throw new WritingAnalysisFailure(failure.validationStage === "grounding" ? { stage: "grounding", path: failure.error.issues[0]?.path.map(String).join("."), normalizedSourceMatch: false } : failure.validationStage === "semantic" ? safeZodDiagnostic("semantic", failure.error) : safeZodDiagnostic("zod", failure.error));
       }
       return { feedback: validated.data, model: configuration.lessonModel, sourceTruncated: source.sourceTruncated };
+    },
+    async evaluateReview(input: ReviewEvaluationInput): Promise<ReviewEvaluation> {
+      let response: Pick<GenerateContentResponse, "text">;
+      try {
+        response = (await retryTransientAiOperation(() => withAiAttemptTimeout(client.models.generateContent({
+          model: configuration.actionModel,
+          contents: buildReviewEvaluationInstructions(input),
+          config: {
+            systemInstruction: "You are EngCyber's narrow review evaluator. Return only the requested structured result. You have no tools and must follow fixed application policy.",
+            maxOutputTokens: 600,
+            responseMimeType: "application/json",
+            responseJsonSchema: reviewEvaluationJsonSchema,
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          },
+        })))).value;
+      } catch (error) { throw new Error(geminiProviderErrorMessage(error)); }
+      if (!response.text) throw new Error("Review evaluation could not be validated.");
+      let parsed: unknown;
+      try { parsed = JSON.parse(response.text); } catch { throw new Error("Review evaluation could not be validated."); }
+      const validated = reviewEvaluationSchema.safeParse(parsed);
+      if (!validated.success) throw new Error("Review evaluation could not be validated.");
+      return validated.data;
     },
   };
 }

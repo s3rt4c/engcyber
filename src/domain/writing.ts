@@ -137,6 +137,9 @@ export interface PersonalErrorPattern {
   readonly lastSeenAt: string;
   readonly lastSeverity: ErrorSeverity;
   readonly status: ErrorPatternStatus;
+  /** M4 review evidence; it deliberately carries no scheduling data. */
+  readonly reviewStatus?: "mastered" | "needs_practice";
+  readonly reviewStatusUpdatedAt?: string;
   readonly priority: number;
 }
 
@@ -233,7 +236,7 @@ export const errorOccurrenceSchema: z.ZodType<ErrorOccurrence> = z.object({
 
 export const personalErrorPatternSchema: z.ZodType<PersonalErrorPattern> = z.object({
   patternKey: boundedText(3, 160), category: categorySchema, subcategory: subcategorySchema, occurrenceCount: z.number().int().min(1), successfulCorrections: z.number().int().min(0),
-  firstSeenAt: z.string().datetime(), lastSeenAt: z.string().datetime(), lastSeverity: severitySchema, status: z.enum(["needs_practice", "improving", "mastered", "returned"]), priority: z.number().finite().min(0),
+  firstSeenAt: z.string().datetime(), lastSeenAt: z.string().datetime(), lastSeverity: severitySchema, status: z.enum(["needs_practice", "improving", "mastered", "returned"]), reviewStatus: z.enum(["mastered", "needs_practice"]).optional(), reviewStatusUpdatedAt: z.string().datetime().optional(), priority: z.number().finite().min(0),
 }).strict();
 
 function normalized(value: string): string {
@@ -307,7 +310,11 @@ function severityWeight(severity: ErrorSeverity): number {
 }
 
 function statusFor(occurrences: readonly ErrorOccurrence[], previous: PersonalErrorPattern | undefined): ErrorPatternStatus {
+  if (previous?.reviewStatus === "mastered" && occurrences.some((occurrence) => occurrence.createdAt > (previous.reviewStatusUpdatedAt ?? ""))) return "returned";
+  if (previous?.reviewStatus === "mastered") return "mastered";
+  if (previous?.reviewStatus === "needs_practice") return "needs_practice";
   if (previous?.status === "mastered" && occurrences.some((occurrence) => !occurrence.correctedAt)) return "returned";
+  if (previous?.status === "mastered") return "mastered";
   const successfulSessions = new Set(occurrences.filter((occurrence) => occurrence.correctedAt).map((occurrence) => occurrence.writingSessionId));
   if (successfulSessions.size >= 2 && successfulSessions.size >= 3) return "mastered";
   if (successfulSessions.size > 0) return "improving";
@@ -336,6 +343,8 @@ export function rebuildErrorPatterns(occurrences: readonly ErrorOccurrence[], pr
       patternKey, category: last.category, subcategory: last.subcategory, occurrenceCount: ordered.length,
       successfulCorrections: new Set(ordered.filter((occurrence) => occurrence.correctedAt).map((occurrence) => occurrence.writingSessionId)).size,
       firstSeenAt: ordered[0].createdAt, lastSeenAt: last.createdAt, lastSeverity: last.severity, status,
+      reviewStatus: previousByKey.get(patternKey)?.reviewStatus,
+      reviewStatusUpdatedAt: previousByKey.get(patternKey)?.reviewStatusUpdatedAt,
       priority: priorityFor(ordered, status, now),
     };
   }).sort((left, right) => right.priority - left.priority || right.lastSeenAt.localeCompare(left.lastSeenAt) || left.patternKey.localeCompare(right.patternKey));

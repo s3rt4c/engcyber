@@ -7,6 +7,7 @@ import {
   validateInitialWritingFeedback,
   validateRevisionWritingFeedback,
   type ErrorOccurrence,
+  type PersonalErrorPattern,
 } from "@/domain/writing";
 
 const source = "The report states that attackers used stolen credentials to access an internal system. The organization enabled phishing-resistant MFA after the incident.";
@@ -93,6 +94,17 @@ describe("M3 writing contracts", () => {
     const returned = rebuildErrorPatterns([...occurrences, { ...occurrences[2], id: "four", writingSessionId: "session-4", correctedAt: null, createdAt: "2026-08-22T00:00:00.000Z" }], mastered, "2026-08-23T00:00:00.000Z");
     expect(returned[0]).toMatchObject({ status: "returned" });
     expect(returned[0].priority).toBeGreaterThan(mastered[0].priority);
+  });
+
+  it("preserves M4 review-earned mastery and turns a later unresolved occurrence into a returned pattern", () => {
+    const corrected: ErrorOccurrence = { id: "one", writingSessionId: "session-1", attemptNumber: 1, category: "grammar", subcategory: "article", patternKey: "grammar.article", originalText: "a organization", correctedText: "an organization", explanation: "Use an before a vowel sound.", severity: "major", confidence: 0.9, createdAt: "2026-08-20T00:00:00.000Z", dismissed: false, correctedAt: "2026-08-20T01:00:00.000Z" };
+    const [derived] = rebuildErrorPatterns([corrected], [], "2026-08-21T00:00:00.000Z");
+    const reviewMastered: PersonalErrorPattern = { ...derived, status: "needs_practice", reviewStatus: "mastered", reviewStatusUpdatedAt: "2026-08-21T12:00:00.000Z" };
+    const [mastered] = rebuildErrorPatterns([corrected], [reviewMastered], "2026-08-22T00:00:00.000Z");
+    expect(mastered).toMatchObject({ status: "mastered", reviewStatus: "mastered" });
+
+    const [returned] = rebuildErrorPatterns([{ ...corrected, id: "two", writingSessionId: "session-2", correctedAt: null, createdAt: "2026-08-23T00:00:00.000Z" }], [mastered], "2026-08-24T00:00:00.000Z");
+    expect(returned).toMatchObject({ status: "returned", reviewStatus: "mastered" });
   });
 
   it("removes dismissed occurrences from derived pattern aggregates", () => {

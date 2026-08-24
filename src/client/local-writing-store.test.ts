@@ -49,6 +49,15 @@ describe("M3 local writing persistence", () => {
     expect((await store.snapshot()).occurrences).toMatchObject([{ id: "occurrence-1", dismissed: true }]);
   });
 
+  it("records M4 review status without adding scheduling data to Error Memory", async () => {
+    const store = new LocalErrorMemoryStore(new MemoryStorage(), () => "2026-08-24T00:00:00.000Z");
+    await store.record(occurrence("occurrence-1"));
+    await expect(store.setReviewStatus("grammar.article", "mastered")).resolves.toBe(true);
+    await expect(store.snapshot()).resolves.toMatchObject({ patterns: [{ patternKey: "grammar.article", status: "mastered", reviewStatus: "mastered" }] });
+    await expect(store.setReviewStatus("grammar.article", "needs_practice")).resolves.toBe(true);
+    await expect(store.snapshot()).resolves.toMatchObject({ patterns: [{ patternKey: "grammar.article", status: "needs_practice", reviewStatus: "needs_practice" }] });
+  });
+
   it("retains no more than 200 error occurrences and no more than 100 patterns", async () => {
     const store = new LocalErrorMemoryStore(new MemoryStorage(), () => "2026-08-24T00:00:00.000Z");
     for (let index = 1; index <= 201; index += 1) await store.record({ ...occurrence(`occurrence-${index}`, `session-${index}`), createdAt: `2026-01-${String((index % 28) + 1).padStart(2, "0")}T00:00:00.000Z` });

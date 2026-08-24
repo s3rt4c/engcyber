@@ -4,6 +4,8 @@ M0 defines types only. M1 deliberately adds no PostgreSQL migrations: saved phra
 
 M3 still adds no PostgreSQL migration. It introduces browser-local `WritingSessionStore` and `ErrorMemoryStore` contracts designed for later Supabase replacement. `writing_sessions` would retain lesson/content identity, the first and revised drafts, validated feedback, and timestamps; it must not duplicate article bodies. `error_occurrences` would retain the validated taxonomy, application-derived pattern key, correction/dismissal state, confidence, and attempt/session identity. `error_patterns` remains a derived aggregation with deterministic lifecycle and priority, not provider-owned state. The local MVP keeps the newest 50 sessions, 200 occurrences, and 100 derived patterns.
 
+M4 also adds no PostgreSQL migration. Its separate browser-local `ReviewStore` would later map to `review_items` and `review_events`: one `error_pattern` item per active pattern, deterministic stage/due/lapse state, and metadata-only events. It stores neither article bodies nor review answers. Phrase review has no persistence shape in M4 and remains deferred.
+
 | Table | Purpose | Important relationships |
 | --- | --- | --- |
 | `sources` | Configured source identity, adapter kind, and optional endpoint. | One-to-many `feed_items`. |
@@ -16,7 +18,7 @@ M3 still adds no PostgreSQL migration. It introduces browser-local `WritingSessi
 | `reading_attempts` / `writing_attempts` | Activity and response evidence. | Future belongs to `users` and optional `lessons`. |
 | `error_patterns` | Stable recurring pattern keys and lifecycle. | Future belongs to `users`; has many occurrences. |
 | `error_occurrences` | Evidence for an error pattern. | Belongs to `error_patterns` and an activity. |
-| `review_items` | Scheduled phrase/error review work. | Future belongs to `users`. |
+| `review_items` | Scheduled Error Pattern review work in M4. | Future belongs to `users`; `source_type` supports a later phrase source without unifying domains now. |
 | `voice_session_reports` | Imported external speaking summaries. | Future belongs to `users`; contributes occurrences. |
 | `progress_snapshots` | Periodic, evidence-based metrics. | Future belongs to `users`. |
 

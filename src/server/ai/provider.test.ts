@@ -31,5 +31,6 @@ describe("AI provider resolution", () => {
       ...environment,
     }, "sentence_action")).toThrow("Gemini sentence actions require GEMINI_ACTION_MODEL");
     expect(resolveAiProvider(environment, "lesson_generation").lessonModel).toBe("gemini-lesson-model");
+    expect(() => resolveAiProvider(environment, "review_evaluation")).toThrow("Gemini sentence actions require GEMINI_ACTION_MODEL");
   });
 });

@@ -8,6 +8,8 @@ M4 also adds no PostgreSQL migration. Its separate browser-local `ReviewStore` w
 
 M5 also adds no PostgreSQL migration. Its separate browser-local `ListeningStore` would later map to `listening_sessions`, `listening_exercises`, `listening_attempts`, and `shadowing_events`: selected bounded exercise sentences, compact alignment counts/status, and explicit repetition timestamps. It does not store full article text, raw learner dictation, provider responses, speech recordings, or pronunciation scores. The local MVP retains 20 sessions and 200 combined attempt/shadowing events.
 
+M6 adds no persistence or migration. The curated source registry is application configuration; feed results are transient bounded metadata returned by discovery. A future `sources` table may mirror only stable registry identity and attribution if product needs justify it, while `feed_items` remains metadata-only and must preserve `source_id` plus application-controlled source display attribution. Full publisher article bodies are still not archived by discovery.
+
 | Table | Purpose | Important relationships |
 | --- | --- | --- |
 | `sources` | Configured source identity, adapter kind, and optional endpoint. | One-to-many `feed_items`. |

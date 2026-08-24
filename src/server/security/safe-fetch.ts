@@ -4,10 +4,12 @@ import { lookup } from "node:dns/promises";
 
 const MAX_REDIRECTS = 3;
 const MAX_BYTES = 2_000_000;
-const textTypes = ["text/html", "application/xhtml+xml", "text/plain"];
+const articleTextTypes = ["text/html", "application/xhtml+xml", "text/plain"];
+const feedXmlTypes = ["application/rss+xml", "application/atom+xml", "application/xml", "text/xml"];
 
 type LookupResult = { address: string; family: number };
-type SafeFetchOptions = { fetcher?: typeof fetch; lookup?: (host: string, options: { all: true }) => Promise<LookupResult[]> };
+export type SafeFetchOptions = { fetcher?: typeof fetch; lookup?: (host: string, options: { all: true }) => Promise<LookupResult[]> };
+type FetchPolicy = { readonly acceptedContentTypes: readonly string[]; readonly contentLabel: string; readonly acceptHeader: string; readonly requireHttps: boolean; readonly revalidate?: number; };
 
 function isUnsafeIpv4(value: string): boolean {
   const parts = value.split(".").map(Number);
@@ -29,13 +31,19 @@ export function assertPublicHttpUrl(input: string): URL {
   return url;
 }
 
+function assertPublicHttpsUrl(input: string): URL {
+  const url = assertPublicHttpUrl(input);
+  if (url.protocol !== "https:") throw new Error("Feed URL must use HTTPS");
+  return url;
+}
+
 async function assertPublicResolution(url: URL, resolver: SafeFetchOptions["lookup"]): Promise<void> {
   const resolve: NonNullable<SafeFetchOptions["lookup"]> = resolver ?? (async (host, options) => await lookup(host, options) as LookupResult[]);
   const addresses = await resolve(url.hostname, { all: true });
   if (!addresses.length || addresses.some(({ address }) => isUnsafeAddress(address))) throw new Error("URL resolves to an unsafe location");
 }
 
-async function readCappedText(response: Response): Promise<string> {
+async function readCappedText(response: Response, contentLabel: string): Promise<string> {
   const reader = response.body?.getReader();
   if (!reader) return "";
   const chunks: Uint8Array[] = [];
@@ -44,7 +52,7 @@ async function readCappedText(response: Response): Promise<string> {
     const { done, value } = await reader.read();
     if (done) break;
     size += value.byteLength;
-    if (size > MAX_BYTES) { await reader.cancel(); throw new Error("Article response is too large"); }
+    if (size > MAX_BYTES) { await reader.cancel(); throw new Error(`${contentLabel} response is too large`); }
     chunks.push(value);
   }
   const bytes = new Uint8Array(size);
@@ -53,23 +61,35 @@ async function readCappedText(response: Response): Promise<string> {
   return new TextDecoder().decode(bytes);
 }
 
-export async function fetchValidatedText(input: string, options: SafeFetchOptions = {}): Promise<{ url: string; html: string }> {
+async function fetchValidatedExternalText(input: string, policy: FetchPolicy, options: SafeFetchOptions): Promise<{ url: string; text: string }> {
   const request = options.fetcher ?? fetch;
-  let url = assertPublicHttpUrl(input);
+  let url = policy.requireHttps ? assertPublicHttpsUrl(input) : assertPublicHttpUrl(input);
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
     await assertPublicResolution(url, options.lookup);
-    const response = await request(url, { redirect: "manual", signal: AbortSignal.timeout(10_000), headers: { Accept: "text/html,application/xhtml+xml,text/plain" } });
+    const requestInit: RequestInit & { next?: { revalidate: number } } = { redirect: "manual", signal: AbortSignal.timeout(10_000), headers: { Accept: policy.acceptHeader } };
+    if (policy.revalidate) requestInit.next = { revalidate: policy.revalidate };
+    const response = await request(url, requestInit);
     if (response.status >= 300 && response.status < 400) {
       const target = response.headers.get("location");
-      if (!target || redirects === MAX_REDIRECTS) throw new Error("Article redirect could not be safely followed");
-      url = assertPublicHttpUrl(new URL(target, url).toString());
+      if (!target || redirects === MAX_REDIRECTS) throw new Error(`${policy.contentLabel} redirect could not be safely followed`);
+      url = policy.requireHttps ? assertPublicHttpsUrl(new URL(target, url).toString()) : assertPublicHttpUrl(new URL(target, url).toString());
       continue;
     }
-    if (!response.ok) throw new Error(`Article request failed with ${response.status}`);
+    if (!response.ok) throw new Error(`${policy.contentLabel} request failed with ${response.status}`);
     const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
-    if (!textTypes.some((type) => contentType.startsWith(type))) throw new Error("Article response is not readable text");
-    if (Number(response.headers.get("content-length") ?? 0) > MAX_BYTES) throw new Error("Article response is too large");
-    return { url: url.toString(), html: await readCappedText(response) };
+    if (!policy.acceptedContentTypes.some((type) => contentType.startsWith(type))) throw new Error(`${policy.contentLabel} response is not ${policy.contentLabel === "Feed" ? "XML" : "readable text"}`);
+    if (Number(response.headers.get("content-length") ?? 0) > MAX_BYTES) throw new Error(`${policy.contentLabel} response is too large`);
+    return { url: url.toString(), text: await readCappedText(response, policy.contentLabel) };
   }
-  throw new Error("Article redirect limit reached");
+  throw new Error(`${policy.contentLabel} redirect limit reached`);
+}
+
+export async function fetchValidatedText(input: string, options: SafeFetchOptions = {}): Promise<{ url: string; html: string }> {
+  const result = await fetchValidatedExternalText(input, { acceptedContentTypes: articleTextTypes, contentLabel: "Article", acceptHeader: articleTextTypes.join(","), requireHttps: false }, options);
+  return { url: result.url, html: result.text };
+}
+
+export async function fetchValidatedFeedText(input: string, options: SafeFetchOptions = {}): Promise<{ url: string; xml: string }> {
+  const result = await fetchValidatedExternalText(input, { acceptedContentTypes: feedXmlTypes, contentLabel: "Feed", acceptHeader: feedXmlTypes.join(","), requireHttps: true, revalidate: 900 }, options);
+  return { url: result.url, xml: result.text };
 }

@@ -22,11 +22,11 @@ Accepted: Personal Error Memory patterns only; deterministic review scheduling, 
 
 ## M5 — Listening
 
-Implemented, awaiting acceptance: deterministic listening sessions from saved lesson text, browser-only TTS, local dictation alignment/scoring, and unscored shadowing. No speech recognition, paid TTS, listening SRS, podcast ingestion, or provider calls are part of M5.
+Accepted: deterministic listening sessions from saved lesson text, browser-only TTS, local dictation alignment/scoring, and unscored shadowing. No speech recognition, paid TTS, listening SRS, podcast ingestion, or provider calls are part of M5.
 
 ## M6 — Source Expansion
 
-Additional RSS, Atom, manual URL, and source-specific adapters. No general crawler until its safety and maintenance costs are justified.
+Implemented, awaiting PR merge: a curated four-source RSS/Atom metadata registry; safe bounded feed fetching and canonical normalisation; source health, provenance, URL deduplication, and local category/source/sort filtering. Arbitrary RSS subscriptions, persistent source preferences, full-article prefetching, and general crawling remain out of scope.
 
 ## M7 — Podcasts / Transcripts
 

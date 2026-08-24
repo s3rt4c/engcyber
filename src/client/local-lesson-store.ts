@@ -56,6 +56,10 @@ export class LocalLessonStore implements LessonStore {
     return updated;
   }
 
+  async list(): Promise<StoredLesson[]> {
+    return [...(this.read()?.lessons ?? [])].sort((left, right) => right.lastAccessedAt.localeCompare(left.lastAccessedAt) || right.id.localeCompare(left.id));
+  }
+
   async save(lesson: StoredLesson): Promise<boolean> {
     const valid = storedLessonSchema.safeParse(lesson);
     if (!valid.success) return false;

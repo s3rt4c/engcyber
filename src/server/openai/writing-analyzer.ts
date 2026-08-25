@@ -18,7 +18,7 @@ export async function analyzeWritingDraft(input: WritingAnalysisInput, env: Reco
   if (input.content.sanitizationStatus !== "sanitized") throw new Error("Writing analysis requires sanitized content.");
   const configuration = writingModelConfiguration(env);
   if (!configuration) throw new Error("Writing analysis is not configured. Add OPENAI_API_KEY and OPENAI_LESSON_MODEL to .env.local.");
-  const source = buildLessonSource(input.content.title, input.content.sanitizedText);
+  const source = input.source ?? buildLessonSource(input.content.title, input.content.sanitizedText);
   const response = await new OpenAI({ apiKey: configuration.apiKey }).responses.parse({
     model: configuration.model,
     store: false,

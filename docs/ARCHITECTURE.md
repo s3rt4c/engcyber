@@ -100,3 +100,9 @@ LessonStore / WritingSessionStore / ErrorMemoryStore / ReviewStore / ListeningSt
 ```
 
 Completed event metrics use lesson `createdAt`, writing-session `createdAt`, optional explicit revision `revisionReviewedAt`, review `reviewedAt`, dictation `attemptedAt`, and shadowing `repeatedAt`. Invalid or future dates are excluded without substitution. Error patterns and current ReviewItems are current-state evidence rather than historical snapshots; M8 therefore never fabricates lifecycle transitions, missed reviews, or a proficiency score. The listening comparison is a bounded activity-evidence comparison, not a listening-level assessment.
+
+## M9 daily learning hub and local library
+
+M9 remains client-local and read-only at its aggregation boundary. Existing local stores feed one typed loader, which produces Home/Library view data; no `HomeStore`, dashboard store, provider capability, background fetch, or cloud repository is introduced. Root `/` is Home, `/discover` keeps the accepted curated-fetch experience, `/add-content` is the manual intake route, and `/my-content` redirects for compatibility. The shared client shell owns accessible route labels and active-route state; server-only provider and source modules are never imported into it.
+
+`StoredLessonContext` is optional and schema-validated on every LessonStore read. For new lessons it retains the exact canonical `buildLessonSource()` text (maximum 12,000 sanitized plain-text characters) plus minimal metadata. `/library/lessons/[lessonId]` reads this browser-local lesson and presents generated material without a provider, feed, article, transcript, or generation request. Context-free legacy lessons still expose their generated material and listening compatibility; they do not reconstruct a source. A validated context is the only resumed-writing source accepted by the server boundary, preserving M3 source grounding without duplicating complete publisher content in WritingSessionStore.

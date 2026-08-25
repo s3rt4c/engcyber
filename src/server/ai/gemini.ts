@@ -119,7 +119,7 @@ export function createGeminiProvider(configuration: ResolvedAiProvider, client: 
     },
     async analyzeWriting(input: WritingAnalysisInput): Promise<GeneratedWritingFeedback> {
       if (input.content.sanitizationStatus !== "sanitized") throw new Error("Writing analysis requires sanitized content.");
-      const source = buildLessonSource(input.content.title, input.content.sanitizedText);
+      const source = input.source ?? buildLessonSource(input.content.title, input.content.sanitizedText);
       let response: Pick<GenerateContentResponse, "text">;
       try {
         response = (await retryTransientAiOperation(() => withAiAttemptTimeout(client.models.generateContent({

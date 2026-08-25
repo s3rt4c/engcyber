@@ -11,8 +11,9 @@ export interface ContentExtractor { extract(input: { url?: string; rawText?: str
 export interface ContentSanitizer { sanitize(input: ExtractedContent): Promise<Content>; }
 export interface LessonGenerator { generate(input: { content: Content; learnerProfile: LearnerProfile; }): Promise<GeneratedLesson>; }
 export interface SentenceActionService { act(input: { sentence: LessonSentence; action: "simplify" | "explain" | "translate" | "listen" | "grammar" | "save_phrase" | "ask_ai"; supportLevel: LearningSupportLevel; }): Promise<void>; }
-export interface SavedPhrase { phrase: string; context: string; sourceTitle: string; sourceUrl: string | null; contentId: string | null; savedAt: string; }
-export interface PhraseStore { save(phrase: SavedPhrase): Promise<"saved" | "duplicate" | "unavailable">; }
+export interface SavedPhrase { readonly id: string; readonly phrase: string; readonly context: string; readonly sourceTitle: string; readonly sourceUrl: string | null; readonly contentId: string | null; readonly savedAt: string; }
+export type SavedPhraseInput = Omit<SavedPhrase, "id">;
+export interface PhraseStore { list(): Promise<readonly SavedPhrase[]>; save(phrase: SavedPhraseInput): Promise<"saved" | "duplicate" | "unavailable">; delete(id: string): Promise<"deleted" | "not_found" | "unavailable">; }
 export interface LessonStore { get(generationFingerprint: string): Promise<StoredLesson | null>; list(): Promise<readonly StoredLesson[]>; save(lesson: StoredLesson): Promise<boolean>; }
 export interface WritingSessionStore { list(): Promise<readonly WritingSession[]>; getByLesson(lessonId: string): Promise<WritingSession | null>; save(session: WritingSession): Promise<boolean>; }
 export interface ErrorMemoryStore { snapshot(): Promise<{ readonly occurrences: readonly ErrorOccurrence[]; readonly patterns: readonly PersonalErrorPattern[] }>; record(occurrence: ErrorOccurrence): Promise<boolean>; markCorrected(ids: readonly string[], correctedAt?: string): Promise<boolean>; setReviewStatus(patternKey: string, status: "mastered" | "needs_practice"): Promise<boolean>; dismiss(id: string): Promise<boolean>; }

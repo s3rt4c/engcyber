@@ -78,9 +78,11 @@ export interface LearningBalance {
 }
 
 export type FocusRecommendationKind = "overdue_review" | "due_review" | "returned_pattern" | "high_priority_pattern" | "neglected_listening" | "neglected_writing" | "neglected_review" | "neglected_lessons" | "revision_follow_through" | "listening_consistency" | "zero_activity";
+export type FocusAction = "review" | "listening" | "discover" | "library";
 
 export interface FocusRecommendation {
   readonly kind: FocusRecommendationKind;
+  readonly action: FocusAction;
   readonly message: string;
 }
 
@@ -206,24 +208,24 @@ function timelineDays(range: ProgressRange, nowDay: string): { readonly label: s
 function buildFocus(input: { readonly review: ReviewProgressSummary; readonly errorPatterns: readonly PersonalErrorPattern[]; readonly balance: LearningBalance; readonly writing: WritingProgressSummary; readonly listening: ListeningProgressSummary }): FocusRecommendation[] {
   const focus: FocusRecommendation[] = [];
   const add = (entry: FocusRecommendation) => { if (focus.length < maximumFocusRecommendations) focus.push(entry); };
-  if (input.review.current.overdue) add({ kind: "overdue_review", message: `You have ${input.review.current.overdue} overdue error-pattern review${input.review.current.overdue === 1 ? "" : "s"}.` });
-  else if (input.review.current.dueNow) add({ kind: "due_review", message: `You have ${input.review.current.dueNow} error-pattern review${input.review.current.dueNow === 1 ? "" : "s"} due now.` });
+  if (input.review.current.overdue) add({ kind: "overdue_review", action: "review", message: `You have ${input.review.current.overdue} overdue error-pattern review${input.review.current.overdue === 1 ? "" : "s"}.` });
+  else if (input.review.current.dueNow) add({ kind: "due_review", action: "review", message: `You have ${input.review.current.dueNow} error-pattern review${input.review.current.dueNow === 1 ? "" : "s"} due now.` });
 
   const returned = input.errorPatterns.filter((pattern) => pattern.status === "returned");
-  if (returned.length) add({ kind: "returned_pattern", message: `${returned.length} returned error pattern${returned.length === 1 ? " needs" : "s need"} attention.` });
+  if (returned.length) add({ kind: "returned_pattern", action: "review", message: `${returned.length} returned error pattern${returned.length === 1 ? " needs" : "s need"} attention.` });
   const highPriority = input.errorPatterns.find((pattern) => pattern.status !== "returned" && pattern.status !== "mastered" && pattern.occurrenceCount >= progressHighPriorityMinimumOccurrences && pattern.priority >= progressHighPriorityMinimumPriority);
-  if (highPriority) add({ kind: "high_priority_pattern", message: `${reviewPatternLabel(highPriority.patternKey)} is a high-priority recurring pattern.` });
+  if (highPriority) add({ kind: "high_priority_pattern", action: "review", message: `${reviewPatternLabel(highPriority.patternKey)} is a high-priority recurring pattern.` });
 
   const otherActivity = Object.values(input.balance).reduce((total, value) => total + value, 0);
   if (otherActivity) {
-    if (!input.balance.listening) add({ kind: "neglected_listening", message: "You have not practiced listening in this period." });
-    else if (!input.balance.writing) add({ kind: "neglected_writing", message: "You have not completed a writing activity in this period." });
-    else if (!input.balance.review) add({ kind: "neglected_review", message: "You have not completed an error-pattern review in this period." });
-    else if (!input.balance.lessons) add({ kind: "neglected_lessons", message: "You have not created a lesson in this period." });
+    if (!input.balance.listening) add({ kind: "neglected_listening", action: "listening", message: "You have not practiced listening in this period." });
+    else if (!input.balance.writing) add({ kind: "neglected_writing", action: "library", message: "You have not completed a writing activity in this period." });
+    else if (!input.balance.review) add({ kind: "neglected_review", action: "review", message: "You have not completed an error-pattern review in this period." });
+    else if (!input.balance.lessons) add({ kind: "neglected_lessons", action: "discover", message: "You have not created a lesson in this period." });
   }
-  if (input.writing.analyses >= 2 && input.writing.revisions / input.writing.analyses < 0.5) add({ kind: "revision_follow_through", message: "Try revising more of your analyzed writing instead of only reviewing feedback." });
-  if (input.listening.dictations > 0 && input.listening.dictations < progressListeningTrendMinimumAttempts) add({ kind: "listening_consistency", message: "Complete a few more dictations before comparing your recent accuracy." });
-  if (!otherActivity && !focus.length) add({ kind: "zero_activity", message: "Start with one lesson or a short review session." });
+  if (input.writing.analyses >= 2 && input.writing.revisions / input.writing.analyses < 0.5) add({ kind: "revision_follow_through", action: "library", message: "Try revising more of your analyzed writing instead of only reviewing feedback." });
+  if (input.listening.dictations > 0 && input.listening.dictations < progressListeningTrendMinimumAttempts) add({ kind: "listening_consistency", action: "listening", message: "Complete a few more dictations before comparing your recent accuracy." });
+  if (!otherActivity && !focus.length) add({ kind: "zero_activity", action: "discover", message: "Start with one lesson or a short review session." });
   return focus;
 }
 

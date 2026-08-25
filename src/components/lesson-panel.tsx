@@ -7,16 +7,16 @@ import { gradeReadingQuestion, type StoredLesson } from "@/domain/lesson";
 import type { Content } from "@/domain/models";
 import { WritingPractice } from "@/components/writing-practice";
 
-export function LessonPanel({ storedLesson, content }: { storedLesson: StoredLesson; content: Content }) {
+export function LessonPanel({ storedLesson, content }: { storedLesson: StoredLesson; content?: Content }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const [notice, setNotice] = useState("");
   const savePhrase = async (phrase: StoredLesson["lesson"]["keyPhrases"][number]) => {
-    const result = await createBrowserPhraseStore().save({ phrase: phrase.phrase, context: phrase.articleContext, sourceTitle: content.title, sourceUrl: content.canonicalUrl, contentId: content.id, savedAt: new Date().toISOString() });
+    const result = await createBrowserPhraseStore().save({ phrase: phrase.phrase, context: phrase.articleContext, sourceTitle: content?.title ?? storedLesson.context?.title ?? "Saved lesson", sourceUrl: content?.canonicalUrl ?? storedLesson.context?.canonicalUrl ?? null, contentId: content?.id ?? storedLesson.context?.contentId ?? storedLesson.contentId, savedAt: new Date().toISOString() });
     setNotice(result === "saved" ? "Phrase saved on this browser." : result === "duplicate" ? "That phrase is already saved." : "Browser storage is unavailable.");
   };
   return <section className="mx-auto max-w-3xl px-6 pb-12" aria-label="Generated lesson">
-    <p className="text-sm text-cyan-300">Generated from the authentic article{storedLesson.sourceTruncated ? " (bounded source excerpt)" : ""}.</p>
+    <p className="text-sm text-cyan-300">Generated from the authentic source{storedLesson.sourceTruncated ? " (bounded source excerpt)" : ""}.</p>{!content && !storedLesson.context && <p className="mt-3 text-sm text-amber-200">Source context unavailable for this older saved lesson.</p>}
     <Link className="mt-4 inline-flex rounded border border-cyan-400/50 px-4 py-2 text-sm font-medium text-cyan-200" href={`/listening?lesson=${encodeURIComponent(storedLesson.generationFingerprint)}`}>Practice Listening</Link>
     <h2 className="mt-6 text-2xl font-semibold">Overview</h2><p className="mt-3 leading-7 text-slate-200">{storedLesson.lesson.overview}</p>
     <h2 className="mt-10 text-2xl font-semibold">Key phrases</h2><div className="mt-4 grid gap-4">{storedLesson.lesson.keyPhrases.map((phrase) => <article className="rounded-xl border border-slate-800 bg-slate-900 p-4" key={phrase.phrase}><div className="flex flex-wrap items-start justify-between gap-3"><h3 className="font-semibold text-cyan-200">{phrase.phrase}</h3><button className="rounded border border-slate-600 px-3 py-1 text-sm" onClick={() => savePhrase(phrase)}>Save phrase</button></div><p className="mt-2 text-sm">{phrase.meaningSimpleEnglish}</p><p className="mt-1 text-sm text-slate-400">Turkish: {phrase.meaningTurkish}</p><p className="mt-3 text-sm text-slate-300">In article: {phrase.articleContext}</p><p className="mt-2 text-sm text-slate-300">Example: {phrase.exampleSentence}</p><p className="mt-2 text-sm text-slate-400">Why useful: {phrase.whyUseful}</p></article>)}</div>{notice && <p className="mt-3 text-sm text-amber-200">{notice}</p>}

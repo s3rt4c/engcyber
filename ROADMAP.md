@@ -2,7 +2,7 @@
 
 ## M0 — Foundation
 
-Next.js application shell, typed domain model, source/lesson/error/TTS boundaries, environment contract, documentation, and test baseline.
+Accepted: Next.js application shell, typed domain model, source/lesson/error/TTS boundaries, environment contract, documentation, and test baseline.
 
 ## M1 — Discover & Reading
 
@@ -26,11 +26,11 @@ Accepted: deterministic listening sessions from saved lesson text, browser-only 
 
 ## M6 — Source Expansion
 
-Implemented, awaiting PR merge: a curated four-source RSS/Atom metadata registry; safe bounded feed fetching and canonical normalisation; source health, provenance, URL deduplication, and local category/source/sort filtering. Arbitrary RSS subscriptions, persistent source preferences, full-article prefetching, and general crawling remain out of scope.
+Accepted: a curated four-source RSS/Atom metadata registry; safe bounded feed fetching and canonical normalisation; source health, provenance, URL deduplication, and local category/source/sort filtering. Arbitrary RSS subscriptions, persistent source preferences, full-article prefetching, and general crawling remain out of scope.
 
 ## M7 — Podcasts / Transcripts
 
-Transcript extraction, future audio support, comprehension activities, and replay-based learning.
+Implemented, awaiting PR merge: one curated Darknet Diaries RSS source; explicit native publisher-audio playback; explicit official transcript discovery/extraction; deterministic speaker-aware study passages; and selected-passage reuse of the existing explicit lesson engine. No transcript archive, audio download, transcript sync, transcription, provider change, or M8 work.
 
 ## M8 — Progress & IELTS-focused analytics
 

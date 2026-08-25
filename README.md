@@ -2,7 +2,7 @@
 
 EngCyber is a private English-learning web application for progressing from B1 toward B2 / early C1 and IELTS Band 7.0. It centres authentic cybersecurity and AI material, while retaining room for general IELTS content.
 
-## M6 status
+## M7 status
 
 M3 adds an explicit two-attempt writing-learning loop inside generated lessons. The learner writes first, explicitly requests concise structured feedback, revises independently, then explicitly requests a comparison. High-confidence validated errors become browser-local Personal Error Memory; the app does not evaluate text while the learner types or opens a lesson. Gemini is the current personal runtime; OpenAI remains an optional supported provider.
 
@@ -11,6 +11,8 @@ M4 adds a separate browser-local ReviewStore for Personal Error Memory patterns 
 M5 adds browser-local Listening Practice for saved lessons: up to five deterministic authentic sentences, browser SpeechSynthesis playback, local dictation scoring, and unscored shadowing repetitions. Listening uses no AI/provider calls, does not retain typed dictation after grading, and keeps its own bounded `ListeningStore` separate from LessonStore and ReviewStore. SpeechSynthesis invocation, cancellation, rate handling, and replay safety are tested; physical audible output depends on the learner's browser and OS audio environment.
 
 M6 expands Discover to four application-controlled official feeds: CISA Cybersecurity Advisories, Hugging Face Blog, SANS ISC Handler's Diary, and Google Cloud Threat Intelligence. Discovery fetches only bounded RSS/Atom metadata server-side, preserves application-controlled source attribution, isolates per-source failure, and supports local category/source/sort controls. Article bodies remain on-demand through the existing safe fetch, extraction, and sanitisation path; discovery, filtering, and article opening call no AI provider.
+
+M7 adds one curated podcast source, Darknet Diaries. It lists only bounded official numbered-episode metadata, plays publisher audio directly with native browser controls, and discovers a transcript only after the learner explicitly requests it. Transcript HTML and audio bytes are never persisted; only a learner-selected bounded study passage may enter the existing explicit lesson flow.
 
 The core flow is deliberately on demand: `discover metadata -> learner opens content -> optional sentence help -> learner requests lesson`. Discovery and ordinary reading never generate a lesson.
 

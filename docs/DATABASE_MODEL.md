@@ -10,6 +10,8 @@ M5 also adds no PostgreSQL migration. Its separate browser-local `ListeningStore
 
 M6 adds no persistence or migration. The curated source registry is application configuration; feed results are transient bounded metadata returned by discovery. A future `sources` table may mirror only stable registry identity and attribution if product needs justify it, while `feed_items` remains metadata-only and must preserve `source_id` plus application-controlled source display attribution. Full publisher article bodies are still not archived by discovery.
 
+M7 also adds no persistence or migration. `PodcastEpisode` metadata and `TranscriptDocument`/speaker turns are transient request or browser-session values, not a transcript archive. A future model could add bounded podcast source/episode metadata only if a product need arises; it must not turn third-party transcript text, audio bytes, or transcript HTML into durable storage without a separate rights, retention, and product decision.
+
 | Table | Purpose | Important relationships |
 | --- | --- | --- |
 | `sources` | Configured source identity, adapter kind, and optional endpoint. | One-to-many `feed_items`. |

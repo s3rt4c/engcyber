@@ -9,6 +9,7 @@ export const primaryNavigation = [
   { href: "/discover", label: "Discover" },
   { href: "/library", label: "Library" },
   { href: "/review", label: "Review" },
+  { href: "/vocabulary", label: "Vocabulary" },
   { href: "/listening", label: "Listening" },
   { href: "/podcasts", label: "Podcasts" },
   { href: "/progress", label: "Progress" },

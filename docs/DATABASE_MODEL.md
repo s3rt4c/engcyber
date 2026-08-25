@@ -16,6 +16,8 @@ M8 adds no persistence or migration. `ProgressSnapshot` is computed on demand fr
 
 M9 still adds no PostgreSQL migration. `StoredLessonContext` is an optional browser-local field for newly created lessons, not a `contents` archive: it retains the exact bounded (12,000-character maximum) sanitized generation source and minimal identity/source metadata needed for local resume. `WritingSession` continues to reference `lesson_id`; it does not copy this context or article body. `SavedPhrase` gains a durable local record `id`, while its duplicate signature remains a separate ingestion rule. A future Supabase mapping may preserve those stable IDs and relationships once cross-device persistence/authentication is approved; M9 adds no cloud sync, account, export, or retention service.
 
+M10 also adds no migration. Its browser-local `VocabularyReviewStore` would later map to separate `vocabulary_review_items` and `vocabulary_review_events` tables. Each item references `user_phrases.id` only and owns stage/status/due/counters; each event contains metadata-only outcome and transition fields. It does not duplicate phrase text/context/source, answers, provider output, or generic Error Pattern Review fields. The local MVP retains at most 200 items and newest 1,000 events.
+
 | Table | Purpose | Important relationships |
 | --- | --- | --- |
 | `sources` | Configured source identity, adapter kind, and optional endpoint. | One-to-many `feed_items`. |

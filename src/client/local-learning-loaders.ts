@@ -1,10 +1,11 @@
 import { findResumableListeningLesson } from "@/client/listening-flow";
-import type { ErrorMemoryStore, LessonStore, ListeningStore, PhraseStore, ReviewStore, SavedPhrase, WritingSessionStore } from "@/domain/boundaries";
+import type { ErrorMemoryStore, LessonStore, ListeningStore, PhraseStore, ReviewStore, SavedPhrase, VocabularyReviewStore, WritingSessionStore } from "@/domain/boundaries";
 import type { StoredLesson } from "@/domain/lesson";
 import { buildProgressSnapshot, type FocusAction, type ProgressSnapshot } from "@/domain/progress";
 import type { ListeningSnapshot } from "@/client/local-listening-store";
 import type { PersonalErrorPattern, WritingSession } from "@/domain/writing";
 import type { ReviewEvent, ReviewItem } from "@/domain/review";
+import type { VocabularyReviewEvent, VocabularyReviewItem } from "@/domain/vocabulary-review";
 
 export interface LocalLearningData {
   readonly lessons: readonly StoredLesson[];
@@ -13,6 +14,8 @@ export interface LocalLearningData {
   readonly errorPatterns: readonly PersonalErrorPattern[];
   readonly reviewItems: readonly ReviewItem[];
   readonly reviewEvents: readonly ReviewEvent[];
+  readonly vocabularyReviewItems: readonly VocabularyReviewItem[];
+  readonly vocabularyReviewEvents: readonly VocabularyReviewEvent[];
   readonly listening: ListeningSnapshot;
 }
 
@@ -22,6 +25,7 @@ export interface LocalLearningReaders {
   readonly writingSessionStore: Pick<WritingSessionStore, "list">;
   readonly errorMemoryStore: Pick<ErrorMemoryStore, "snapshot">;
   readonly reviewStore: Pick<ReviewStore, "snapshot">;
+  readonly vocabularyReviewStore: Pick<VocabularyReviewStore, "snapshot">;
   readonly listeningStore: Pick<ListeningStore, "snapshot">;
 }
 
@@ -32,15 +36,16 @@ async function settled<T>(operation: () => Promise<T>, fallback: T): Promise<T> 
 
 /** Reads only existing browser-local stores; it never fetches, generates, or synchronizes. */
 export async function loadLocalLearningData(readers: LocalLearningReaders): Promise<LocalLearningData> {
-  const [lessons, phrases, writingSessions, errorMemory, review, listening] = await Promise.all([
+  const [lessons, phrases, writingSessions, errorMemory, review, vocabularyReview, listening] = await Promise.all([
     settled(() => readers.lessonStore.list(), []),
     settled(() => readers.phraseStore.list(), []),
     settled(() => readers.writingSessionStore.list(), []),
     settled(() => readers.errorMemoryStore.snapshot(), { occurrences: [], patterns: [] }),
     settled(() => readers.reviewStore.snapshot(), { items: [], events: [] }),
+    settled(() => readers.vocabularyReviewStore.snapshot(), { items: [], events: [] }),
     settled(() => readers.listeningStore.snapshot(), { sessions: [], attempts: [], shadowingEvents: [], playbackRate: 1 }),
   ]);
-  return { lessons, phrases, writingSessions, errorPatterns: errorMemory.patterns, reviewItems: review.items, reviewEvents: review.events, listening: { sessions: [...listening.sessions], attempts: [...listening.attempts], shadowingEvents: [...listening.shadowingEvents], playbackRate: listening.playbackRate } };
+  return { lessons, phrases, writingSessions, errorPatterns: errorMemory.patterns, reviewItems: review.items, reviewEvents: review.events, vocabularyReviewItems: vocabularyReview.items, vocabularyReviewEvents: vocabularyReview.events, listening: { sessions: [...listening.sessions], attempts: [...listening.attempts], shadowingEvents: [...listening.shadowingEvents], playbackRate: listening.playbackRate } };
 }
 
 export type WritingResumeAction = { readonly label: "Revise writing" | "Review revision feedback" | "Writing feedback available"; readonly enabled: boolean };
@@ -56,7 +61,7 @@ export interface LibraryLesson {
 
 export interface LibraryData {
   readonly lessons: readonly LibraryLesson[];
-  readonly phrases: readonly SavedPhrase[];
+  readonly phrases: readonly (SavedPhrase & { readonly reviewStatus: VocabularyReviewItem["status"] | null; readonly reviewDueAt: string | null })[];
 }
 
 function writingAction(session: WritingSession | undefined, contextAvailable: boolean): WritingResumeAction | null {
@@ -80,24 +85,28 @@ export function buildLibrary(data: LocalLearningData): LibraryData {
       contextAvailable: Boolean(lesson.context),
       writingAction: writingAction(writingByLesson.get(lesson.id), Boolean(lesson.context)),
     })),
-    phrases: [...data.phrases].sort((left, right) => right.savedAt.localeCompare(left.savedAt) || right.id.localeCompare(left.id)),
+    phrases: [...data.phrases].sort((left, right) => right.savedAt.localeCompare(left.savedAt) || right.id.localeCompare(left.id)).map((phrase) => {
+      const reviewItem = data.vocabularyReviewItems.find((item) => item.phraseId === phrase.id);
+      return { ...phrase, reviewStatus: reviewItem?.status ?? null, reviewDueAt: reviewItem?.dueAt ?? null };
+    }),
   };
 }
 
-export function focusHref(action: FocusAction): "/review" | "/listening" | "/discover" | "/library" {
-  const routes: Readonly<Record<FocusAction, "/review" | "/listening" | "/discover" | "/library">> = { review: "/review", listening: "/listening", discover: "/discover", library: "/library" };
+export function focusHref(action: FocusAction): "/review" | "/vocabulary" | "/listening" | "/discover" | "/library" {
+  const routes: Readonly<Record<FocusAction, "/review" | "/vocabulary" | "/listening" | "/discover" | "/library">> = { review: "/review", vocabulary: "/vocabulary", listening: "/listening", discover: "/discover", library: "/library" };
   return routes[action];
 }
 
 export interface DailyHub {
   readonly continueItems: readonly { readonly kind: "listening" | "writing"; readonly label: string; readonly href: string }[];
   readonly review: { readonly dueNow: number; readonly overdue: number };
+  readonly vocabulary: { readonly dueNow: number; readonly overdue: number };
   readonly focus: readonly { readonly kind: ProgressSnapshot["focus"][number]["kind"]; readonly message: string; readonly href: ReturnType<typeof focusHref> }[];
   readonly recentLessons: readonly LibraryLesson[];
 }
 
 export function buildDailyHub(data: LocalLearningData, options: { readonly now: string; readonly timeZone: string }): DailyHub {
-  const snapshot = buildProgressSnapshot({ lessons: data.lessons, writingSessions: data.writingSessions, errorPatterns: data.errorPatterns, reviewItems: data.reviewItems, reviewEvents: data.reviewEvents, listeningAttempts: data.listening.attempts, shadowingEvents: data.listening.shadowingEvents }, { range: "all", ...options });
+  const snapshot = buildProgressSnapshot({ lessons: data.lessons, writingSessions: data.writingSessions, errorPatterns: data.errorPatterns, reviewItems: data.reviewItems, reviewEvents: data.reviewEvents, vocabularyReviewItems: data.vocabularyReviewItems, vocabularyReviewEvents: data.vocabularyReviewEvents, vocabularyPhraseIds: data.phrases.map((phrase) => phrase.id), listeningAttempts: data.listening.attempts, shadowingEvents: data.listening.shadowingEvents }, { range: "all", ...options });
   const library = buildLibrary(data);
   const resumeLesson = findResumableListeningLesson({ sessions: data.listening.sessions, lessons: data.lessons });
   const continuations: Array<{ readonly kind: "listening" | "writing"; readonly label: string; readonly href: string }> = [];
@@ -108,6 +117,7 @@ export function buildDailyHub(data: LocalLearningData, options: { readonly now: 
   return {
     continueItems: continuations,
     review: { dueNow: snapshot.review.current.dueNow, overdue: snapshot.review.current.overdue },
+    vocabulary: { dueNow: snapshot.vocabulary.current.dueNow, overdue: snapshot.vocabulary.current.overdue },
     focus: snapshot.focus.map((entry) => ({ kind: entry.kind, message: entry.message, href: focusHref(entry.action) })),
     recentLessons: library.lessons.slice(0, 3),
   };

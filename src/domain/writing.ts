@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Content } from "@/domain/models";
+import type { LessonSource } from "@/domain/lesson";
 
 const taxonomy = {
   grammar: ["tense", "subject_verb_agreement", "article", "preposition", "word_order", "auxiliary_verb", "passive_voice", "singular_plural", "sentence_structure"],
@@ -154,6 +155,8 @@ export interface WritingAnalysisInput {
   readonly stage: "initial" | "revision";
   readonly writingSessionId: string;
   readonly content: Content;
+  /** A validated saved lesson may preserve this exact bounded source for resumed grounding. */
+  readonly source?: LessonSource;
   readonly task: string;
   readonly draft: string;
   readonly originalDraft?: string;

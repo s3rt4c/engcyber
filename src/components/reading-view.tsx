@@ -6,7 +6,7 @@ import { createBrowserLessonStore } from "@/client/local-lesson-store";
 import { createBrowserPhraseStore } from "@/client/local-phrase-store";
 import { openCachedOrGeneratedLesson } from "@/client/lesson-flow";
 import { LessonPanel } from "@/components/lesson-panel";
-import type { StoredLesson } from "@/domain/lesson";
+import { createStoredLessonContext, type StoredLesson } from "@/domain/lesson";
 import type { Content } from "@/domain/models";
 import type { SentenceAction } from "@/domain/sentence-actions";
 
@@ -39,7 +39,7 @@ export function ReadingView({ content, sourceName }: { content: Content; sourceN
         const response = await fetch("/api/lessons/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content }) });
         const data = await response.json() as { lesson?: StoredLesson; error?: string };
         if (!response.ok || !data.lesson) throw new Error(data.error ?? "Lesson generation failed.");
-        return data.lesson;
+        return { ...data.lesson, context: createStoredLessonContext(content, sourceName) };
       } });
       setLesson(opened.lesson); setShowLesson(true); if (opened.cacheHit) setNotice("Opened your cached lesson without an AI request.");
     } catch (error) { setNotice(error instanceof Error ? error.message : "Lesson generation failed."); } finally { setLessonBusy(false); }

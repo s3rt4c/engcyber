@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { defaultLearnerProfile } from "@/domain/learner-profile";
 import {
   buildLessonSource,
+  createStoredLessonContext,
   gradeReadingQuestion,
   validateLessonDraft,
   type LessonDraft,
@@ -74,6 +75,15 @@ describe("M2 lesson contracts", () => {
   it("keeps an untrusted oversized title within the lesson source bound", () => {
     const source = buildLessonSource("T".repeat(13_000), sourceText);
     expect(source.text.length).toBeLessThanOrEqual(12_000);
+  });
+
+  it("retains exactly the canonical bounded lesson source as validated local context", () => {
+    const context = createStoredLessonContext({ id: "content-1", title: "Article title", canonicalUrl: "https://example.com/report", primaryCategory: "cybersecurity_news", contentType: "article", sanitizedText: sourceText, contentFingerprint: "sha256:original" }, "CISA");
+
+    expect(context.sourceText).toBe("Title: Article title\n\nAttackers used stolen credentials to access the network.\n\nThe organisation introduced stronger authentication controls after the incident.\n\nThe report explains how the breach affected several internal systems.");
+    expect(context.sourceText.length).toBeLessThanOrEqual(12_000);
+    expect(context.canonicalUrl).toBe("https://example.com/report");
+    expect(context.sourceTruncated).toBe(false);
   });
 
   it("rejects malformed and ungrounded structured lessons while accepting grounded output", () => {

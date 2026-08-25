@@ -112,7 +112,17 @@ describe("M8 progress aggregation", () => {
       lessons: [lesson("one", "2026-08-24T10:00:00.000Z")],
     }), { range: "7d", now, timeZone: "UTC" });
 
-    expect(snapshot.focus.map((entry) => entry.kind)).toEqual(["overdue_review", "returned_pattern", "neglected_listening"]);
+    expect(snapshot.focus.map((entry) => [entry.kind, entry.action])).toEqual([["overdue_review", "review"], ["returned_pattern", "review"], ["neglected_listening", "listening"]]);
+  });
+
+  it("keeps focus routing semantic rather than embedding application URLs", () => {
+    const snapshot = buildProgressSnapshot(data({
+      writingSessions: [writingSession("one", "2026-08-24T10:00:00.000Z"), writingSession("two", "2026-08-23T10:00:00.000Z")],
+      lessons: [lesson("one", "2026-08-24T10:00:00.000Z")],
+    }), { range: "7d", now, timeZone: "UTC" });
+
+    expect(snapshot.focus).toEqual([{ kind: "neglected_listening", action: "listening", message: "You have not practiced listening in this period." }, { kind: "revision_follow_through", action: "library", message: "Try revising more of your analyzed writing instead of only reviewing feedback." }]);
+    expect(snapshot.focus.every((entry) => !("href" in entry) && !("url" in entry))).toBe(true);
   });
 
   it("does not let invalid activity or current patterns create an active day", () => {

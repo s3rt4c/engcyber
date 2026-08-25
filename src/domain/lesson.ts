@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { contentCategories } from "@/domain/learning";
+import type { Content, ContentType } from "@/domain/models";
 
 export const lessonPromptVersion = "m2-prompt-v1";
 export const lessonSchemaVersion = "m2-schema-v1";
@@ -54,6 +56,30 @@ export const lessonDraftSchema = z.object({
 export type LessonDraft = z.infer<typeof lessonDraftSchema>;
 export type ReadingQuestion = LessonDraft["readingQuestions"][number];
 
+const persistedHttpUrlSchema = z.string().trim().max(2_000).url().refine((value) => {
+  try {
+    const url = new URL(value);
+    return (url.protocol === "http:" || url.protocol === "https:") && !url.username && !url.password;
+  } catch { return false; }
+}, "A stored source URL must be a safe HTTP or HTTPS URL.");
+
+const contentTypeValues = ["article", "podcast", "transcript", "write_up", "document", "manual"] as const satisfies readonly ContentType[];
+
+export const storedLessonContextSchema = z.object({
+  version: z.literal("m9-lesson-context-v1"),
+  title: z.string().trim().min(1).max(500),
+  sourceLabel: z.string().trim().min(1).max(240).optional(),
+  canonicalUrl: persistedHttpUrlSchema.nullable(),
+  contentId: z.string().trim().min(1).max(240),
+  contentFingerprint: z.string().trim().min(1).max(200),
+  primaryCategory: z.enum(contentCategories.map((category) => category.id) as [Content["primaryCategory"], ...Content["primaryCategory"][]]),
+  contentType: z.enum(contentTypeValues),
+  sourceText: z.string().trim().min(1).max(lessonSourceMaximumCharacters).refine((value) => !/<\/?[a-z][^>]*>/iu.test(value), "Stored lesson context must not contain markup."),
+  sourceTruncated: z.boolean(),
+}).strict();
+
+export type StoredLessonContext = z.infer<typeof storedLessonContextSchema>;
+
 export const storedLessonSchema = z.object({
   id: z.string().trim().min(1),
   contentId: z.string().trim().min(1),
@@ -67,6 +93,7 @@ export const storedLessonSchema = z.object({
   createdAt: z.string().datetime(),
   lastAccessedAt: z.string().datetime(),
   sourceTruncated: z.boolean(),
+  context: storedLessonContextSchema.optional(),
   lesson: lessonDraftSchema,
 });
 
@@ -116,6 +143,23 @@ export function buildLessonSource(title: string, sanitizedText: string): LessonS
   if (fullText.length <= lessonSourceMaximumCharacters) return { text: fullText, sourceTruncated: false };
   const selected = selectedParagraphs(paragraphs, lessonSourceMaximumCharacters - heading.length);
   return { text: `${heading}${selected.join("\n\n")}`, sourceTruncated: true };
+}
+
+export function createStoredLessonContext(content: Pick<Content, "id" | "title" | "canonicalUrl" | "primaryCategory" | "contentType" | "sanitizedText" | "contentFingerprint">, sourceLabel?: string): StoredLessonContext {
+  const source = buildLessonSource(content.title, content.sanitizedText);
+  const context = {
+    version: "m9-lesson-context-v1" as const,
+    title: normalizeWhitespace(content.title).slice(0, 500),
+    ...(sourceLabel?.trim() ? { sourceLabel: normalizeWhitespace(sourceLabel).slice(0, 240) } : {}),
+    canonicalUrl: content.canonicalUrl,
+    contentId: content.id,
+    contentFingerprint: content.contentFingerprint,
+    primaryCategory: content.primaryCategory,
+    contentType: content.contentType,
+    sourceText: source.text,
+    sourceTruncated: source.sourceTruncated,
+  };
+  return storedLessonContextSchema.parse(context);
 }
 
 export function validateLessonDraft(value: unknown, suppliedLessonSource: string) {

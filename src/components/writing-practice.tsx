@@ -32,7 +32,7 @@ function FeedbackIssueCard({ issue, dismissed, onDismiss }: { issue: WritingFeed
   </article>;
 }
 
-export function WritingPractice({ storedLesson, content }: { storedLesson: StoredLesson; content: Content }) {
+export function WritingPractice({ storedLesson, content }: { storedLesson: StoredLesson; content?: Content }) {
   const writing = storedLesson.lesson.writing;
   const [sessionStore] = useState(createBrowserWritingSessionStore);
   const [memoryStore] = useState(createBrowserErrorMemoryStore);
@@ -60,15 +60,16 @@ export function WritingPractice({ storedLesson, content }: { storedLesson: Store
   };
 
   const analyzeInitial = async () => {
+    if (!content && !storedLesson.context) return setNotice("Source context is unavailable for this older saved lesson, so new writing analysis is disabled.");
     setBusy(true); setNotice(""); setDiagnostic(null);
     const writingSessionId = session?.id ?? createdId();
-    const result = await submitWritingAnalysis(fetch, { draft, payload: { stage: "initial", writingSessionId, content, task: writing.task, errorMemory: compactErrorMemory(memory.patterns) } });
+    const result = await submitWritingAnalysis(fetch, { draft, payload: { stage: "initial", writingSessionId, ...(content ? { content } : { lessonContext: storedLesson.context }), task: writing.task, errorMemory: compactErrorMemory(memory.patterns) } });
     if (!result.ok) { setNotice(result.error); setDiagnostic(result.diagnostic ?? null); setBusy(false); return; }
     const payload = result.data as { feedback?: unknown };
     const feedback = storedInitialWritingFeedbackSchema.safeParse(payload.feedback);
     if (!feedback.success) { setNotice("Writing feedback could not be validated."); setBusy(false); return; }
     const now = new Date().toISOString();
-    const next: WritingSession = { id: writingSessionId, lessonId: storedLesson.id, contentId: content.id, contentFingerprint: content.contentFingerprint, task: writing.task, minWords: writing.minWords, maxWords: writing.maxWords, firstDraft: draft, initialFeedback: feedback.data, revisedDraft: null, revisionFeedback: null, dismissedErrorIds: session?.dismissedErrorIds ?? [], createdAt: session?.createdAt ?? now, updatedAt: now };
+    const next: WritingSession = { id: writingSessionId, lessonId: storedLesson.id, contentId: content?.id ?? storedLesson.contentId, contentFingerprint: content?.contentFingerprint ?? storedLesson.contentFingerprint, task: writing.task, minWords: writing.minWords, maxWords: writing.maxWords, firstDraft: draft, initialFeedback: feedback.data, revisedDraft: null, revisionFeedback: null, dismissedErrorIds: session?.dismissedErrorIds ?? [], createdAt: session?.createdAt ?? now, updatedAt: now };
     await persistSession(next);
     await Promise.all(feedback.data.priorityErrors.filter((issue) => issue.memoryEligible).map((issue) => memoryStore.record(issueOccurrence(issue, writingSessionId, 1, now))));
     await refreshMemory();
@@ -78,8 +79,9 @@ export function WritingPractice({ storedLesson, content }: { storedLesson: Store
 
   const analyzeRevision = async () => {
     if (!session?.initialFeedback) return;
+    if (!content && !storedLesson.context) return setNotice("Source context is unavailable for this older saved lesson, so new writing analysis is disabled.");
     setBusy(true); setNotice("");
-    const result = await submitWritingAnalysis(fetch, { draft, payload: { stage: "revision", writingSessionId: session.id, content, task: writing.task, originalDraft: session.firstDraft, initialFeedback: session.initialFeedback, errorMemory: compactErrorMemory(memory.patterns) } });
+    const result = await submitWritingAnalysis(fetch, { draft, payload: { stage: "revision", writingSessionId: session.id, ...(content ? { content } : { lessonContext: storedLesson.context }), task: writing.task, originalDraft: session.firstDraft, initialFeedback: session.initialFeedback, errorMemory: compactErrorMemory(memory.patterns) } });
     if (!result.ok) { setNotice(result.error); setBusy(false); return; }
     const payload = result.data as { feedback?: unknown };
     const feedback = storedRevisionWritingFeedbackSchema.safeParse(payload.feedback);
@@ -112,9 +114,10 @@ export function WritingPractice({ storedLesson, content }: { storedLesson: Store
     <textarea id={`writing-${storedLesson.id}`} className="mt-2 min-h-48 w-full rounded border border-slate-700 bg-slate-950 p-3 text-base leading-7" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Write your response here before requesting feedback." />
     <p className="mt-3 text-xs text-slate-400">Your draft is sent to the configured AI provider only when you request feedback.</p>
     <div className="mt-3 flex flex-wrap gap-3">
-      {!feedback && <button className="rounded bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50" disabled={busy} onClick={analyzeInitial}>{busy ? "Analyzing…" : "Analyze Writing"}</button>}
-      {feedback && !revision && <button className="rounded bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50" disabled={busy} onClick={analyzeRevision}>{busy ? "Reviewing…" : "Review My Revision"}</button>}
+      {!feedback && <button className="rounded bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50" disabled={busy || (!content && !storedLesson.context)} onClick={analyzeInitial}>{busy ? "Analyzing…" : "Analyze Writing"}</button>}
+      {feedback && !revision && <button className="rounded bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50" disabled={busy || (!content && !storedLesson.context)} onClick={analyzeRevision}>{busy ? "Reviewing…" : "Review My Revision"}</button>}
     </div>
+    {!content && !storedLesson.context && <p className="mt-3 text-sm text-amber-200">Source context unavailable for this older saved lesson. Existing writing feedback remains available, but new provider-backed analysis is disabled.</p>}
     {notice && <p className="mt-3 text-sm text-amber-200">{notice}</p>}{process.env.NODE_ENV !== "production" && diagnostic !== null && <pre className="mt-2 overflow-auto rounded bg-slate-950 p-2 text-xs text-slate-400">{JSON.stringify(diagnostic)}</pre>}
     {feedback && <section className="mt-6"><h3 className="text-lg font-semibold">Initial feedback</h3><p className="mt-2 text-slate-200">{feedback.overallFeedback}</p><div className="mt-4 space-y-3">{feedback.priorityErrors.map((issue) => <FeedbackIssueCard key={issue.id} issue={issue} dismissed={dismissed.has(issue.id)} onDismiss={dismissIssue} />)}</div>{feedback.vocabularySuggestions.length > 0 && <div className="mt-4"><h4 className="font-medium">Useful vocabulary</h4>{feedback.vocabularySuggestions.map((suggestion) => <p className="mt-2 text-sm" key={suggestion.originalText}><strong>{suggestion.originalText}</strong> → {suggestion.suggestion}: {suggestion.explanation}</p>)}</div>}{feedback.technicalAccuracy && <p className="mt-4 text-sm text-slate-300"><strong>Technical accuracy:</strong> {feedback.technicalAccuracy.note}</p>}<p className="mt-4 text-sm text-cyan-200">Try the writing again: {feedback.revisionFocus.join(" ")}</p></section>}
     {revision && <section className="mt-6"><h3 className="text-lg font-semibold">Revision feedback</h3><div className="mt-3 space-y-2 text-sm">{revision.improvements.map((improvement) => <p key={improvement}><strong>Improved:</strong> {improvement}</p>)}{revision.resolvedErrorIds.length > 0 && <p><strong>Resolved:</strong> {revision.resolvedErrorIds.length} important issue{revision.resolvedErrorIds.length === 1 ? "" : "s"}.</p>}{revision.remainingErrors.map((issue) => <p key={issue.initialErrorId}><strong>Still work on:</strong> {issue.explanation} {issue.recommendedAction}</p>)}{revision.newErrors.map((issue) => <FeedbackIssueCard key={issue.id} issue={issue} dismissed={dismissed.has(issue.id)} onDismiss={dismissIssue} />)}</div>{revision.improvedExample && <article className="mt-4 rounded-lg border border-emerald-700/50 bg-emerald-950/20 p-4"><h4 className="font-medium text-emerald-200">Improved comparison example</h4><p className="mt-2 text-sm leading-6">{revision.improvedExample}</p></article>}</section>}

@@ -34,8 +34,12 @@ Accepted: one curated Darknet Diaries RSS source; explicit native publisher-audi
 
 ## M8 — Progress & Learning Analytics
 
-Implemented, awaiting acceptance: browser-local, deterministic analytics derived from existing lesson, writing, Error Memory, review, and listening evidence. It presents activity and learning evidence only—never IELTS/CEFR prediction, a proficiency score, gamification, cloud analytics, telemetry, or provider-generated coaching.
+Accepted: browser-local, deterministic analytics derived from existing lesson, writing, Error Memory, review, and listening evidence. It presents activity and learning evidence only—never IELTS/CEFR prediction, a proficiency score, gamification, cloud analytics, telemetry, or provider-generated coaching.
 
-## M9 — Future assessment or persistence work
+## M9 — Daily Learning Hub & Local Library
 
-Deferred: any explicit standardized diagnostic, authentication, cross-device persistence, or provider-backed coaching requires a separate evidence, privacy, and product decision. M8 does not establish those capabilities.
+Implemented, awaiting acceptance: a compact shared shell; Home/Daily Learning Hub; `/discover` plus canonical `/add-content`; `/library` for saved lessons and phrases; and zero-network cached lesson detail. New lessons retain only the exact bounded sanitized generation source needed to resume local lesson/writing work. Phrase records gain durable local IDs while their M1 duplicate signature remains unchanged. Phrase/vocabulary SRS, cloud persistence, auth, export, and M10 remain out of scope.
+
+## M10 — Phrase / Vocabulary Review (not started)
+
+Deferred: a separate decision will define phrase review semantics, scheduling, and any vocabulary exercise design. M9 deliberately creates no Phrase ReviewItems, flashcards, stage, due date, mastery, or SRS state.

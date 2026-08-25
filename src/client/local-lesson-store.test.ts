@@ -37,6 +37,24 @@ describe("LocalLessonStore", () => {
     expect(values.has("engcyber.lessons.v1")).toBe(false);
   });
 
+  it("persists a valid bounded lesson context for cached resume", async () => {
+    const values = new Map<string, string>();
+    const store = new LocalLessonStore({ getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) });
+    const context = { version: "m9-lesson-context-v1" as const, title: "Security report", sourceLabel: "CISA", canonicalUrl: "https://example.com/report", contentId: "content-1", contentFingerprint: "sha256:content", primaryCategory: "cybersecurity_news" as const, contentType: "article" as const, sourceText: "Title: Security report\n\nAttackers used stolen credentials to access the network.", sourceTruncated: false };
+
+    await expect(store.save({ ...lesson(), context })).resolves.toBe(true);
+    await expect(store.list()).resolves.toMatchObject([{ context }]);
+  });
+
+  it("rejects malformed persisted lesson context rather than trusting localStorage", async () => {
+    const values = new Map<string, string>();
+    values.set("engcyber.lessons.v1", JSON.stringify({ version: "m2-lesson-cache-v1", lessons: [{ ...lesson(), context: { version: "m9-lesson-context-v1", title: "Report", canonicalUrl: "javascript:alert(1)", contentId: "content-1", contentFingerprint: "sha256:content", primaryCategory: "cybersecurity_news", contentType: "article", sourceText: "<script>alert(1)</script>", sourceTruncated: false } }] }));
+    const store = new LocalLessonStore({ getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) });
+
+    await expect(store.list()).resolves.toEqual([]);
+    expect(values.has("engcyber.lessons.v1")).toBe(false);
+  });
+
   it("keeps only the 20 most recently stored lessons", async () => {
     const values = new Map<string, string>();
     const store = new LocalLessonStore({ getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) });

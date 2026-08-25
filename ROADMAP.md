@@ -38,8 +38,8 @@ Accepted: browser-local, deterministic analytics derived from existing lesson, w
 
 ## M9 — Daily Learning Hub & Local Library
 
-Implemented, awaiting acceptance: a compact shared shell; Home/Daily Learning Hub; `/discover` plus canonical `/add-content`; `/library` for saved lessons and phrases; and zero-network cached lesson detail. New lessons retain only the exact bounded sanitized generation source needed to resume local lesson/writing work. Phrase records gain durable local IDs while their M1 duplicate signature remains unchanged. Phrase/vocabulary SRS, cloud persistence, auth, export, and M10 remain out of scope.
+Accepted: a compact shared shell; Home/Daily Learning Hub; `/discover` plus canonical `/add-content`; `/library` for saved lessons and phrases; and zero-network cached lesson detail. New lessons retain only the exact bounded sanitized generation source needed to resume local lesson/writing work. Phrase records gain durable local IDs while their M1 duplicate signature remains unchanged.
 
-## M10 — Phrase / Vocabulary Review (not started)
+## M10 — Phrase & Vocabulary SRS
 
-Deferred: a separate decision will define phrase review semantics, scheduling, and any vocabulary exercise design. M9 deliberately creates no Phrase ReviewItems, flashcards, stage, due date, mastery, or SRS state.
+Accepted, awaiting merge: explicitly enrolled saved phrases only; dedicated `VocabularyReviewStore`; deterministic 1/3/7/14/30/60-day retrieval progression; context-cloze/source-recall exercises; conservative local exact matching; returned-error recovery; and metadata-only events. It deliberately remains separate from M4 Error Pattern Review, uses no AI or network calls, and adds no definitions, translations, flashcards, generic review framework, cloud persistence, or phrase editing.

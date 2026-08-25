@@ -2,7 +2,7 @@
 
 EngCyber is a private English-learning web application for progressing from B1 toward B2 / early C1 and IELTS Band 7.0. It centres authentic cybersecurity and AI material, while retaining room for general IELTS content.
 
-## M9 status
+## M10 status
 
 M3 adds an explicit two-attempt writing-learning loop inside generated lessons. The learner writes first, explicitly requests concise structured feedback, revises independently, then explicitly requests a comparison. High-confidence validated errors become browser-local Personal Error Memory; the app does not evaluate text while the learner types or opens a lesson. Gemini is the current personal runtime; OpenAI remains an optional supported provider.
 
@@ -16,7 +16,9 @@ M7 adds one curated podcast source, Darknet Diaries. It lists only bounded offic
 
 M8 is accepted: its browser-local `/progress` view derives activity evidence from existing lesson, writing, Error Memory, review, and listening records without provider, network, telemetry, or stored analytics snapshots.
 
-M9 is implemented and awaiting acceptance. `/` is the action-first Daily Learning Hub, curated discovery lives at `/discover`, and `/library` lists browser-local lessons and saved phrases. A new `/library/lessons/[lessonId]` page opens cached generated material without recreating a publisher article. Newly saved lessons retain the exact 12,000-character-or-less canonical sanitized lesson source used for generation; older lessons remain usable but explicitly degrade where source-dependent writing cannot be resumed. Home, Library, phrase listing, and cached lesson detail make no provider, feed, article, transcript, or lesson-generation request.
+M9 is accepted. `/` is the action-first Daily Learning Hub, curated discovery lives at `/discover`, and `/library` lists browser-local lessons and saved phrases. A new `/library/lessons/[lessonId]` page opens cached generated material without recreating a publisher article. Newly saved lessons retain the exact 12,000-character-or-less canonical sanitized lesson source used for generation; older lessons remain usable but explicitly degrade where source-dependent writing cannot be resumed. Home, Library, phrase listing, and cached lesson detail make no provider, feed, article, transcript, or lesson-generation request.
+
+M10 is accepted and awaiting merge. `/vocabulary` is a separate browser-local Phrase & Vocabulary SRS, entered only when the learner explicitly adds a saved phrase. It uses deterministic 1/3/7/14/30/60-day retrieval scheduling, context cloze or source-attribution recall, conservative local exact-answer checking, and metadata-only review events. Vocabulary items reference durable `SavedPhrase` IDs and stay separate from M4 Error Pattern Review. Opening Home, Library, Progress, or Vocabulary makes no provider, feed, article, transcript, lesson-generation, or other network request.
 
 The core flow is deliberately on demand: `discover metadata -> learner opens content -> optional sentence help -> learner requests lesson`. Discovery and ordinary reading never generate a lesson.
 

@@ -8,7 +8,7 @@ describe("M9 shared application shell", () => {
     const html = renderToStaticMarkup(<AppShell><p>Route content</p></AppShell>);
 
     expect(html).toContain('aria-label="Primary navigation"');
-    for (const label of ["Home", "Discover", "Library", "Review", "Listening", "Podcasts", "Progress", "Add Content"]) expect(html).toContain(`>${label}<`);
+    for (const label of ["Home", "Discover", "Library", "Review", "Vocabulary", "Listening", "Podcasts", "Progress", "Add Content"]) expect(html).toContain(`>${label}<`);
     expect(html).toContain("Route content");
     expect(html).toContain('aria-current="page" href="/">Home<');
   });

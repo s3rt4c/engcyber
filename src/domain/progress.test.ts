@@ -5,6 +5,7 @@ import type { StoredLesson } from "@/domain/lesson";
 import type { ListeningAttempt, ShadowingEvent } from "@/domain/listening";
 import type { ReviewEvent, ReviewItem } from "@/domain/review";
 import type { PersonalErrorPattern, WritingSession } from "@/domain/writing";
+import { enrollVocabularyPhrase, type VocabularyReviewEvent } from "@/domain/vocabulary-review";
 
 const now = "2026-08-25T12:00:00.000Z";
 
@@ -49,7 +50,7 @@ function pattern(patternKey: string, status: PersonalErrorPattern["status"], occ
 }
 
 function data(overrides: Partial<ProgressSourceData> = {}): ProgressSourceData {
-  return { lessons: [], writingSessions: [], errorPatterns: [], reviewItems: [], reviewEvents: [], listeningAttempts: [], shadowingEvents: [], ...overrides };
+  return { lessons: [], writingSessions: [], errorPatterns: [], reviewItems: [], reviewEvents: [], vocabularyReviewItems: [], vocabularyReviewEvents: [], vocabularyPhraseIds: [], listeningAttempts: [], shadowingEvents: [], ...overrides };
 }
 
 describe("M8 progress aggregation", () => {
@@ -149,5 +150,16 @@ describe("M8 progress aggregation", () => {
 
     expect(snapshot.activity.activeDays).toBe(0);
     expect(snapshot.focus.map((entry) => entry.kind)).toEqual(["overdue_review"]);
+  });
+
+  it("reports vocabulary separately from the M8 learning-balance dimensions and prioritizes its due work after error review", () => {
+    const vocabularyItem = enrollVocabularyPhrase("phrase-1", "2026-08-23T12:00:00.000Z");
+    const vocabularyEvent: VocabularyReviewEvent = { id: "vocab-1", phraseId: "phrase-1", reviewedAt: "2026-08-25T10:00:00.000Z", reviewKind: "scheduled", outcome: "correct", stageBefore: 0, stageAfter: 1, statusBefore: "learning", statusAfter: "learning", scheduleChanged: true };
+    const snapshot = buildProgressSnapshot(data({ vocabularyReviewItems: [vocabularyItem], vocabularyReviewEvents: [vocabularyEvent], vocabularyPhraseIds: ["phrase-1"] }), { range: "7d", now, timeZone: "UTC" });
+
+    expect(snapshot.vocabulary.current).toEqual({ enrolled: 1, dueNow: 1, overdue: 1, mastered: 0, returned: 0 });
+    expect(snapshot.vocabulary.events).toMatchObject({ attempts: 1, scheduled: 1, practiceNow: 0, correct: 1, incorrect: 0 });
+    expect(snapshot.balance).toEqual({ lessons: 0, writing: 0, review: 0, listening: 0 });
+    expect(snapshot.focus.map((entry) => entry.kind)).toEqual(["overdue_vocabulary"]);
   });
 });

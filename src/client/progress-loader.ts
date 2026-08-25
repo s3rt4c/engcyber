@@ -1,4 +1,4 @@
-import type { ErrorMemoryStore, LessonStore, ListeningStore, ReviewStore, WritingSessionStore } from "@/domain/boundaries";
+import type { ErrorMemoryStore, LessonStore, ListeningStore, PhraseStore, ReviewStore, VocabularyReviewStore, WritingSessionStore } from "@/domain/boundaries";
 import type { ProgressSourceData } from "@/domain/progress";
 
 export interface ProgressReaders {
@@ -6,6 +6,8 @@ export interface ProgressReaders {
   readonly writingSessionStore: Pick<WritingSessionStore, "list">;
   readonly errorMemoryStore: Pick<ErrorMemoryStore, "snapshot">;
   readonly reviewStore: Pick<ReviewStore, "snapshot">;
+  readonly phraseStore: Pick<PhraseStore, "list">;
+  readonly vocabularyReviewStore: Pick<VocabularyReviewStore, "snapshot">;
   readonly listeningStore: Pick<ListeningStore, "snapshot">;
 }
 
@@ -15,12 +17,14 @@ async function settled<T>(operation: () => Promise<T>, fallback: T): Promise<T> 
 }
 
 export async function loadProgressSourceData(readers: ProgressReaders): Promise<ProgressSourceData> {
-  const [lessons, writingSessions, errorMemory, review, listening] = await Promise.all([
+  const [lessons, writingSessions, errorMemory, review, phrases, vocabularyReview, listening] = await Promise.all([
     settled(() => readers.lessonStore.list(), []),
     settled(() => readers.writingSessionStore.list(), []),
     settled(() => readers.errorMemoryStore.snapshot(), { occurrences: [], patterns: [] }),
     settled(() => readers.reviewStore.snapshot(), { items: [], events: [] }),
+    settled(() => readers.phraseStore.list(), []),
+    settled(() => readers.vocabularyReviewStore.snapshot(), { items: [], events: [] }),
     settled(() => readers.listeningStore.snapshot(), { sessions: [], attempts: [], shadowingEvents: [], playbackRate: 1 }),
   ]);
-  return { lessons, writingSessions, errorPatterns: errorMemory.patterns, reviewItems: review.items, reviewEvents: review.events, listeningAttempts: listening.attempts, shadowingEvents: listening.shadowingEvents };
+  return { lessons, writingSessions, errorPatterns: errorMemory.patterns, reviewItems: review.items, reviewEvents: review.events, vocabularyReviewItems: vocabularyReview.items, vocabularyReviewEvents: vocabularyReview.events, vocabularyPhraseIds: phrases.map((phrase) => phrase.id), listeningAttempts: listening.attempts, shadowingEvents: listening.shadowingEvents };
 }

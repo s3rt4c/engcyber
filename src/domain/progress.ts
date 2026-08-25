@@ -2,6 +2,7 @@ import type { StoredLesson } from "@/domain/lesson";
 import type { ListeningAttempt, ShadowingEvent } from "@/domain/listening";
 import { reviewPatternLabel, type ReviewEvent, type ReviewItem } from "@/domain/review";
 import type { PersonalErrorPattern, WritingSession } from "@/domain/writing";
+import { vocabularyReviewCurrentState, type VocabularyReviewEvent, type VocabularyReviewItem } from "@/domain/vocabulary-review";
 
 export type ProgressRange = "7d" | "30d" | "all";
 export type ProgressTimeZone = string;
@@ -12,6 +13,9 @@ export interface ProgressSourceData {
   readonly errorPatterns: readonly PersonalErrorPattern[];
   readonly reviewItems: readonly ReviewItem[];
   readonly reviewEvents: readonly ReviewEvent[];
+  readonly vocabularyReviewItems: readonly VocabularyReviewItem[];
+  readonly vocabularyReviewEvents: readonly VocabularyReviewEvent[];
+  readonly vocabularyPhraseIds: readonly string[];
   readonly listeningAttempts: readonly ListeningAttempt[];
   readonly shadowingEvents: readonly ShadowingEvent[];
 }
@@ -60,6 +64,11 @@ export interface ReviewProgressSummary {
   readonly events: { readonly attempts: number; readonly scheduled: number; readonly practiceNow: number; readonly correct: number; readonly incorrect: number; readonly uncertain: number; readonly successRate: number | null };
 }
 
+export interface VocabularyProgressSummary {
+  readonly current: { readonly enrolled: number; readonly dueNow: number; readonly overdue: number; readonly mastered: number; readonly returned: number };
+  readonly events: { readonly attempts: number; readonly scheduled: number; readonly practiceNow: number; readonly correct: number; readonly incorrect: number; readonly successRate: number | null };
+}
+
 export type ListeningTrend = { readonly kind: "unavailable" } | { readonly kind: "similar"; readonly points: number } | { readonly kind: "higher" | "lower"; readonly points: number };
 
 export interface ListeningProgressSummary {
@@ -77,8 +86,8 @@ export interface LearningBalance {
   readonly listening: number;
 }
 
-export type FocusRecommendationKind = "overdue_review" | "due_review" | "returned_pattern" | "high_priority_pattern" | "neglected_listening" | "neglected_writing" | "neglected_review" | "neglected_lessons" | "revision_follow_through" | "listening_consistency" | "zero_activity";
-export type FocusAction = "review" | "listening" | "discover" | "library";
+export type FocusRecommendationKind = "overdue_review" | "overdue_vocabulary" | "due_review" | "due_vocabulary" | "returned_pattern" | "high_priority_pattern" | "neglected_listening" | "neglected_writing" | "neglected_review" | "neglected_lessons" | "revision_follow_through" | "listening_consistency" | "zero_activity";
+export type FocusAction = "review" | "vocabulary" | "listening" | "discover" | "library";
 
 export interface FocusRecommendation {
   readonly kind: FocusRecommendationKind;
@@ -94,6 +103,7 @@ export interface ProgressSnapshot {
   readonly writing: WritingProgressSummary;
   readonly errorMemory: ErrorMemoryProgressSummary;
   readonly review: ReviewProgressSummary;
+  readonly vocabulary: VocabularyProgressSummary;
   readonly listening: ListeningProgressSummary;
   readonly balance: LearningBalance;
   readonly focus: readonly FocusRecommendation[];
@@ -205,14 +215,18 @@ function timelineDays(range: ProgressRange, nowDay: string): { readonly label: s
   return { label: range === "all" ? "Recent 30-day activity" : "Daily activity", days: Array.from({ length: count }, (_, index) => addDays(start, index)) };
 }
 
-function buildFocus(input: { readonly review: ReviewProgressSummary; readonly errorPatterns: readonly PersonalErrorPattern[]; readonly balance: LearningBalance; readonly writing: WritingProgressSummary; readonly listening: ListeningProgressSummary }): FocusRecommendation[] {
+function buildFocus(input: { readonly review: ReviewProgressSummary; readonly vocabulary: VocabularyProgressSummary; readonly errorPatterns: readonly PersonalErrorPattern[]; readonly balance: LearningBalance; readonly writing: WritingProgressSummary; readonly listening: ListeningProgressSummary }): FocusRecommendation[] {
   const focus: FocusRecommendation[] = [];
   const add = (entry: FocusRecommendation) => { if (focus.length < maximumFocusRecommendations) focus.push(entry); };
   if (input.review.current.overdue) add({ kind: "overdue_review", action: "review", message: `You have ${input.review.current.overdue} overdue error-pattern review${input.review.current.overdue === 1 ? "" : "s"}.` });
-  else if (input.review.current.dueNow) add({ kind: "due_review", action: "review", message: `You have ${input.review.current.dueNow} error-pattern review${input.review.current.dueNow === 1 ? "" : "s"} due now.` });
+  if (input.vocabulary.current.overdue) add({ kind: "overdue_vocabulary", action: "vocabulary", message: `You have ${input.vocabulary.current.overdue} overdue vocabulary review${input.vocabulary.current.overdue === 1 ? "" : "s"}.` });
 
   const returned = input.errorPatterns.filter((pattern) => pattern.status === "returned");
   if (returned.length) add({ kind: "returned_pattern", action: "review", message: `${returned.length} returned error pattern${returned.length === 1 ? " needs" : "s need"} attention.` });
+  const currentErrorDue = input.review.current.dueNow - input.review.current.overdue;
+  const currentVocabularyDue = input.vocabulary.current.dueNow - input.vocabulary.current.overdue;
+  if (currentErrorDue) add({ kind: "due_review", action: "review", message: `You have ${currentErrorDue} error-pattern review${currentErrorDue === 1 ? "" : "s"} due now.` });
+  if (currentVocabularyDue) add({ kind: "due_vocabulary", action: "vocabulary", message: `You have ${currentVocabularyDue} vocabulary review${currentVocabularyDue === 1 ? "" : "s"} due now.` });
   const highPriority = input.errorPatterns.find((pattern) => pattern.status !== "returned" && pattern.status !== "mastered" && pattern.occurrenceCount >= progressHighPriorityMinimumOccurrences && pattern.priority >= progressHighPriorityMinimumPriority);
   if (highPriority) add({ kind: "high_priority_pattern", action: "review", message: `${reviewPatternLabel(highPriority.patternKey)} is a high-priority recurring pattern.` });
 
@@ -241,6 +255,7 @@ export function buildProgressSnapshot(source: ProgressSourceData, options: Progr
   const analyses = selected(source.writingSessions.filter((session) => session.initialFeedback !== null), (session) => session.createdAt, currentWindow, nowMs, options.timeZone);
   const revisions = selected(source.writingSessions.filter((session) => session.revisionFeedback !== null && Boolean(session.revisionReviewedAt)), (session) => session.revisionReviewedAt!, currentWindow, nowMs, options.timeZone);
   const reviewEvents = selected(source.reviewEvents, (event) => event.reviewedAt, currentWindow, nowMs, options.timeZone);
+  const vocabularyEvents = selected(source.vocabularyReviewEvents, (event) => event.reviewedAt, currentWindow, nowMs, options.timeZone);
   const attempts = selected(source.listeningAttempts, (attempt) => attempt.attemptedAt, currentWindow, nowMs, options.timeZone);
   const shadowingEvents = selected(source.shadowingEvents, (event) => event.repeatedAt, currentWindow, nowMs, options.timeZone);
 
@@ -287,6 +302,11 @@ export function buildProgressSnapshot(source: ProgressSourceData, options: Progr
   const balance: LearningBalance = { lessons: lessons.length, writing: analyses.length + revisions.length, review: reviewEvents.length, listening: attempts.length + shadowingEvents.length };
   const writing: WritingProgressSummary = { analyses: analyses.length, revisions: revisions.length, highConfidenceFindings, averageHighConfidenceFindings: analyses.length ? highConfidenceFindings / analyses.length : null, resolvedInRevisions: revisionTotals.resolved, remainingInRevisions: revisionTotals.remaining, resolutionRate: evaluated ? revisionTotals.resolved / evaluated : null };
   const review: ReviewProgressSummary = { current: { dueNow, overdue, masteredItems: source.reviewItems.filter((item) => item.status === "mastered").length }, events: { attempts: reviewEvents.length, scheduled, practiceNow, correct, incorrect, uncertain, successRate: correct + incorrect ? correct / (correct + incorrect) : null } };
+  const vocabularyCurrent = vocabularyReviewCurrentState(source.vocabularyReviewItems, source.vocabularyPhraseIds.map((id) => ({ id })), options.now, options.timeZone);
+  const vocabularyCorrect = vocabularyEvents.filter((event) => event.outcome === "correct").length;
+  const vocabularyIncorrect = vocabularyEvents.filter((event) => event.outcome === "incorrect").length;
+  const vocabularyScheduled = vocabularyEvents.filter((event) => event.reviewKind === "scheduled").length;
+  const vocabulary: VocabularyProgressSummary = { current: vocabularyCurrent, events: { attempts: vocabularyEvents.length, scheduled: vocabularyScheduled, practiceNow: vocabularyEvents.length - vocabularyScheduled, correct: vocabularyCorrect, incorrect: vocabularyIncorrect, successRate: vocabularyCorrect + vocabularyIncorrect ? vocabularyCorrect / (vocabularyCorrect + vocabularyIncorrect) : null } };
 
   const events: DatedEvent[] = [
     ...lessons.map((lesson) => ({ timestamp: lesson.createdAt, activity: "lessons" as const })),
@@ -299,5 +319,5 @@ export function buildProgressSnapshot(source: ProgressSourceData, options: Progr
   const timelineConfig = timelineDays(options.range, nowDay);
   const allTimeTimelineEvents = events;
 
-  return { range: options.range, timeZone: options.timeZone, timelineLabel: timelineConfig.label, activity, writing, errorMemory: { current, topPatterns }, review, listening, balance, focus: buildFocus({ review, errorPatterns: source.errorPatterns, balance, writing, listening }), timeline: timeline(timelineConfig.days, allTimeTimelineEvents, options.timeZone) };
+  return { range: options.range, timeZone: options.timeZone, timelineLabel: timelineConfig.label, activity, writing, errorMemory: { current, topPatterns }, review, vocabulary, listening, balance, focus: buildFocus({ review, vocabulary, errorPatterns: source.errorPatterns, balance, writing, listening }), timeline: timeline(timelineConfig.days, allTimeTimelineEvents, options.timeZone) };
 }

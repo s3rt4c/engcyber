@@ -4,6 +4,7 @@ import { buildDailyHub, buildLibrary, loadLocalLearningData, type LocalLearningD
 import type { StoredLesson } from "@/domain/lesson";
 import type { ListeningSession } from "@/domain/listening";
 import type { WritingSession } from "@/domain/writing";
+import { enrollVocabularyPhrase } from "@/domain/vocabulary-review";
 
 function lesson(id: string, createdAt: string, context = true): StoredLesson {
   return {
@@ -22,7 +23,7 @@ function listening(lessonFingerprint: string, completedAt: string | null): Liste
 }
 
 function data(overrides: Partial<LocalLearningData> = {}): LocalLearningData {
-  return { lessons: [], phrases: [], writingSessions: [], errorPatterns: [], reviewItems: [], reviewEvents: [], listening: { sessions: [], attempts: [], shadowingEvents: [], playbackRate: 1 }, ...overrides };
+  return { lessons: [], phrases: [], writingSessions: [], errorPatterns: [], reviewItems: [], reviewEvents: [], vocabularyReviewItems: [], vocabularyReviewEvents: [], listening: { sessions: [], attempts: [], shadowingEvents: [], playbackRate: 1 }, ...overrides };
 }
 
 describe("M9 local learning loaders", () => {
@@ -38,7 +39,7 @@ describe("M9 local learning loaders", () => {
     const hub = buildDailyHub(data({ lessons: [savedLesson], listening: { sessions: [listening(savedLesson.generationFingerprint, null)], attempts: [], shadowingEvents: [], playbackRate: 1 } }), { now: "2026-08-25T12:00:00.000Z", timeZone: "UTC" });
 
     expect(hub.continueItems).toEqual([{ kind: "listening", label: "Continue listening", href: `/listening?lesson=${encodeURIComponent(savedLesson.generationFingerprint)}` }]);
-    expect(hub.focus.every((entry) => ["/review", "/listening", "/discover", "/library"].includes(entry.href))).toBe(true);
+    expect(hub.focus.every((entry) => ["/review", "/vocabulary", "/listening", "/discover", "/library"].includes(entry.href))).toBe(true);
   });
 
   it("does not offer completed listening as continuation and does not mutate review data while assembling Home", () => {
@@ -51,6 +52,13 @@ describe("M9 local learning loaders", () => {
     expect(hub.review).toEqual({ dueNow: 0, overdue: 0 });
   });
 
+  it("surfaces phrase review state from the separate vocabulary store without enrolling or mutating a phrase", () => {
+    const savedPhrase = { id: "phrase-1", phrase: "carry out an assessment", context: "Teams must carry out an assessment.", sourceTitle: "Report", sourceUrl: null, contentId: "content-one", savedAt: "2026-08-24T10:00:00.000Z" };
+    const library = buildLibrary(data({ phrases: [savedPhrase], vocabularyReviewItems: [enrollVocabularyPhrase(savedPhrase.id, "2026-08-24T10:00:00.000Z")] }));
+
+    expect(library.phrases).toEqual([expect.objectContaining({ id: "phrase-1", reviewStatus: "learning", reviewDueAt: "2026-08-25T10:00:00.000Z" })]);
+  });
+
   it("reads only local store contracts without invoking browser fetch or a ReviewStore mutation", async () => {
     const fetch = vi.fn(() => { throw new Error("Home and Library must not fetch"); });
     vi.stubGlobal("fetch", fetch);
@@ -59,7 +67,7 @@ describe("M9 local learning loaders", () => {
     const empty = data();
     const loaded = await loadLocalLearningData({
       lessonStore: { list: async () => empty.lessons }, phraseStore: { list: async () => empty.phrases }, writingSessionStore: { list: async () => empty.writingSessions },
-      errorMemoryStore: { snapshot: async () => ({ occurrences: [], patterns: [] }) }, reviewStore: reviewReader,
+      errorMemoryStore: { snapshot: async () => ({ occurrences: [], patterns: [] }) }, reviewStore: reviewReader, vocabularyReviewStore: { snapshot: async () => ({ items: [], events: [] }) },
       listeningStore: { snapshot: async () => empty.listening },
     });
 

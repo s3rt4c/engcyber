@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { LocalErrorMemoryStore } from "@/client/local-error-memory-store";
 import { LocalWritingSessionStore } from "@/client/local-writing-session-store";
-import type { ErrorOccurrence, WritingSession } from "@/domain/writing";
+import { writingSessionSchema, type ErrorOccurrence, type WritingSession } from "@/domain/writing";
 
 class MemoryStorage {
   readonly values = new Map<string, string>();
@@ -24,6 +24,11 @@ describe("M3 local writing persistence", () => {
     const storage = new MemoryStorage();
     await new LocalWritingSessionStore(storage).save(session("one"));
     await expect(new LocalWritingSessionStore(storage).getByLesson("lesson-one")).resolves.toMatchObject({ id: "one", firstDraft: "The organization must patch the system after the incident." });
+  });
+
+  it("accepts the optional explicit revision-review timestamp without clearing legacy sessions", () => {
+    expect(writingSessionSchema.safeParse({ ...session("with-revision-time"), revisionReviewedAt: "2026-08-24T12:00:00.000Z" }).success).toBe(true);
+    expect(writingSessionSchema.safeParse(session("legacy")).success).toBe(true);
   });
 
   it("recovers safely from corrupt writing-session data", async () => {

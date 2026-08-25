@@ -84,3 +84,19 @@ The client imports only domain discovery types and pure local filtering/sorting.
 M7 keeps `PodcastEpisode` metadata distinct from `TranscriptDocument` content. `GET /api/podcasts` reads exactly one application-controlled Darknet Diaries RSS feed and returns only bounded valid numbered episode metadata; it does not fetch episode pages, transcripts, audio, or providers. `GET /api/podcasts/[episodeId]/transcript` resolves the opaque server-held episode identity against a fresh bounded feed, discovers the explicit official transcript link from its official episode page, then extracts only `article.single-post` into ordered speaker-aware turns. Missing selectors, non-HTTPS/external transcript links, unsafe redirects, non-HTML responses, and size limits fail closed.
 
 The transcript and selected passage remain browser-memory/session data. Native publisher audio uses a direct `<audio preload="none">`; it is never proxied or persisted. Deterministic passage segmentation is client-safe and respects speaker/paragraph text and sentence boundaries where possible, with a 300-word hard limit. A selected passage, not the transcript, is converted to sanitized `Content` and can follow the existing explicit lesson path; M7 adds no provider capability.
+
+## M8 progress and learning analytics
+
+M8 is a client-only derived-data flow. A typed loader consumes the existing public browser-local store interfaces, isolates any rejected source read with `Promise.allSettled`, and passes typed evidence to a pure `src/domain/progress.ts` aggregator. The domain accepts injected `now`, selected range, and learner browser IANA timezone; it has no Next.js, storage, provider, server, or network dependency. The `/progress` route contains no API fetch, and it writes neither a calculated snapshot nor an analytics event.
+
+```
+LessonStore / WritingSessionStore / ErrorMemoryStore / ReviewStore / ListeningStore
+                                      |
+                            typed read-only source data
+                                      |
+                         buildProgressSnapshot(now, range, timezone)
+                                      |
+                                browser-local Progress UI
+```
+
+Completed event metrics use lesson `createdAt`, writing-session `createdAt`, optional explicit revision `revisionReviewedAt`, review `reviewedAt`, dictation `attemptedAt`, and shadowing `repeatedAt`. Invalid or future dates are excluded without substitution. Error patterns and current ReviewItems are current-state evidence rather than historical snapshots; M8 therefore never fabricates lifecycle transitions, missed reviews, or a proficiency score. The listening comparison is a bounded activity-evidence comparison, not a listening-level assessment.

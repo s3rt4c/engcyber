@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createBrowserErrorMemoryStore, type ErrorMemorySnapshot } from "@/client/local-error-memory-store";
 import { createBrowserWritingSessionStore } from "@/client/local-writing-session-store";
-import { submitWritingAnalysis, wordCountForWriting, writingTargetNotice } from "@/client/writing-flow";
+import { preserveRevisionTimestampOnDismissal, recordRevisionReview, submitWritingAnalysis, wordCountForWriting, writingTargetNotice } from "@/client/writing-flow";
 import type { StoredLesson } from "@/domain/lesson";
 import type { Content } from "@/domain/models";
 import { compactErrorMemory, storedInitialWritingFeedbackSchema, storedRevisionWritingFeedbackSchema, type ErrorOccurrence, type WritingFeedbackIssue, type WritingSession } from "@/domain/writing";
@@ -85,7 +85,7 @@ export function WritingPractice({ storedLesson, content }: { storedLesson: Store
     const feedback = storedRevisionWritingFeedbackSchema.safeParse(payload.feedback);
     if (!feedback.success) { setNotice("Revision feedback could not be validated."); setBusy(false); return; }
     const now = new Date().toISOString();
-    const next = { ...session, revisedDraft: draft, revisionFeedback: feedback.data, updatedAt: now } satisfies WritingSession;
+    const next = recordRevisionReview(session, draft, feedback.data, now);
     await persistSession(next);
     await memoryStore.markCorrected(feedback.data.resolvedErrorIds, now);
     await Promise.all(feedback.data.newErrors.filter((issue) => issue.memoryEligible).map((issue) => memoryStore.record(issueOccurrence(issue, session.id, 2, now))));
@@ -96,7 +96,7 @@ export function WritingPractice({ storedLesson, content }: { storedLesson: Store
 
   const dismissIssue = async (id: string) => {
     await memoryStore.dismiss(id);
-    if (session) await persistSession({ ...session, dismissedErrorIds: [...new Set([...(session.dismissedErrorIds ?? []), id])], updatedAt: new Date().toISOString() });
+    if (session) await persistSession(preserveRevisionTimestampOnDismissal(session, id, new Date().toISOString()));
     await refreshMemory();
     setNotice("Marked as not an error. It no longer contributes to Personal Error Memory.");
   };

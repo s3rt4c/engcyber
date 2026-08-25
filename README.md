@@ -2,7 +2,7 @@
 
 EngCyber is a private English-learning web application for progressing from B1 toward B2 / early C1 and IELTS Band 7.0. It centres authentic cybersecurity and AI material, while retaining room for general IELTS content.
 
-## M7 status
+## M8 status
 
 M3 adds an explicit two-attempt writing-learning loop inside generated lessons. The learner writes first, explicitly requests concise structured feedback, revises independently, then explicitly requests a comparison. High-confidence validated errors become browser-local Personal Error Memory; the app does not evaluate text while the learner types or opens a lesson. Gemini is the current personal runtime; OpenAI remains an optional supported provider.
 
@@ -13,6 +13,8 @@ M5 adds browser-local Listening Practice for saved lessons: up to five determini
 M6 expands Discover to four application-controlled official feeds: CISA Cybersecurity Advisories, Hugging Face Blog, SANS ISC Handler's Diary, and Google Cloud Threat Intelligence. Discovery fetches only bounded RSS/Atom metadata server-side, preserves application-controlled source attribution, isolates per-source failure, and supports local category/source/sort controls. Article bodies remain on-demand through the existing safe fetch, extraction, and sanitisation path; discovery, filtering, and article opening call no AI provider.
 
 M7 adds one curated podcast source, Darknet Diaries. It lists only bounded official numbered-episode metadata, plays publisher audio directly with native browser controls, and discovers a transcript only after the learner explicitly requests it. Transcript HTML and audio bytes are never persisted; only a learner-selected bounded study passage may enter the existing explicit lesson flow.
+
+M8 adds a browser-local `/progress` view derived from existing lesson, writing, Error Memory, review, and listening evidence. It uses no provider, network request, telemetry service, or stored analytics snapshot. Range-scoped event metrics use learner-local calendar days (7 days, 30 days, or all time), while Error Memory and due-review panels are explicitly labelled as current state. The view reports activity evidence only; it does not estimate IELTS, CEFR, fluency, vocabulary size, or an overall score.
 
 The core flow is deliberately on demand: `discover metadata -> learner opens content -> optional sentence help -> learner requests lesson`. Discovery and ordinary reading never generate a lesson.
 
@@ -37,7 +39,7 @@ The core flow is deliberately on demand: `discover metadata -> learner opens con
 - `src/app`: App Router pages and server route handlers.
 - `src/domain`: framework-independent models and feature boundaries.
 - `src/server`: server-only source registry/discovery, safe fetching, sanitization, AI-provider, and Supabase seams.
-- `src/client`: versioned browser-local lesson, phrase, writing-session, error-memory, review, listening, and browser-speech adapters.
+- `src/client`: versioned browser-local lesson, phrase, writing-session, error-memory, review, listening, progress-loading, and browser-speech adapters.
 - `docs`: the M0 architecture and database proposal.
 
 Read [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), and [docs/DATABASE_MODEL.md](docs/DATABASE_MODEL.md) before expanding a product workflow.

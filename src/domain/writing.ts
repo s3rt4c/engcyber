@@ -208,6 +208,8 @@ export interface WritingSession {
   readonly initialFeedback: InitialWritingFeedback | null;
   readonly revisedDraft: string | null;
   readonly revisionFeedback: RevisionWritingFeedback | null;
+  /** Timestamp of an explicit successful Review My Revision action; legacy sessions may not have one. */
+  readonly revisionReviewedAt?: string;
   readonly dismissedErrorIds?: readonly string[];
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -217,7 +219,7 @@ export const writingSessionSchema: z.ZodType<WritingSession> = z.object({
   id: boundedText(1, 120), lessonId: boundedText(1, 180), contentId: boundedText(1, 180), contentFingerprint: boundedText(1, 180),
   task: boundedText(20, 800), minWords: z.number().int().min(1).max(1_000), maxWords: z.number().int().min(1).max(1_000),
   firstDraft: boundedText(1, writingDraftMaximumCharacters), initialFeedback: storedInitialWritingFeedbackSchema.nullable(),
-  revisedDraft: boundedText(1, writingDraftMaximumCharacters).nullable(), revisionFeedback: storedRevisionWritingFeedbackSchema.nullable(),
+  revisedDraft: boundedText(1, writingDraftMaximumCharacters).nullable(), revisionFeedback: storedRevisionWritingFeedbackSchema.nullable(), revisionReviewedAt: z.string().datetime().optional(),
   dismissedErrorIds: z.array(boundedText(1, 120)).max(10).optional(),
   createdAt: z.string().datetime(), updatedAt: z.string().datetime(),
 }).strict().superRefine((session, context) => {

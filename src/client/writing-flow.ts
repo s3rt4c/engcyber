@@ -1,8 +1,17 @@
 import { wordCountForWriting as domainWordCount, writingDraftProblem } from "@/domain/writing";
+import type { RevisionWritingFeedback, WritingSession } from "@/domain/writing";
 
 type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 export const wordCountForWriting = domainWordCount;
+
+export function recordRevisionReview(session: WritingSession, revisedDraft: string, revisionFeedback: RevisionWritingFeedback, reviewedAt: string): WritingSession {
+  return { ...session, revisedDraft, revisionFeedback, revisionReviewedAt: reviewedAt, updatedAt: reviewedAt };
+}
+
+export function preserveRevisionTimestampOnDismissal(session: WritingSession, issueId: string, updatedAt: string): WritingSession {
+  return { ...session, dismissedErrorIds: [...new Set([...(session.dismissedErrorIds ?? []), issueId])], updatedAt };
+}
 
 export function writingTargetNotice(draft: string, minimum: number, maximum: number): string | null {
   const words = wordCountForWriting(draft);

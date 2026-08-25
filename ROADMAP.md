@@ -30,8 +30,12 @@ Accepted: a curated four-source RSS/Atom metadata registry; safe bounded feed fe
 
 ## M7 — Podcasts / Transcripts
 
-Implemented, awaiting PR merge: one curated Darknet Diaries RSS source; explicit native publisher-audio playback; explicit official transcript discovery/extraction; deterministic speaker-aware study passages; and selected-passage reuse of the existing explicit lesson engine. No transcript archive, audio download, transcript sync, transcription, provider change, or M8 work.
+Accepted: one curated Darknet Diaries RSS source; explicit native publisher-audio playback; explicit official transcript discovery/extraction; deterministic speaker-aware study passages; and selected-passage reuse of the existing explicit lesson engine. No transcript archive, audio download, transcript sync, transcription, provider change, or M8 work.
 
-## M8 — Progress & IELTS-focused analytics
+## M8 — Progress & Learning Analytics
 
-Progress snapshots and evidence-based skill indicators for B2 / IELTS 7 progression; never a fake score generator.
+Implemented, awaiting acceptance: browser-local, deterministic analytics derived from existing lesson, writing, Error Memory, review, and listening evidence. It presents activity and learning evidence only—never IELTS/CEFR prediction, a proficiency score, gamification, cloud analytics, telemetry, or provider-generated coaching.
+
+## M9 — Future assessment or persistence work
+
+Deferred: any explicit standardized diagnostic, authentication, cross-device persistence, or provider-backed coaching requires a separate evidence, privacy, and product decision. M8 does not establish those capabilities.

@@ -9,6 +9,7 @@ describe("M1 discover shell", () => {
 
     expect(html).toContain("Discover");
     expect(html).toContain("My Content");
+    expect(html).toContain("Progress");
     expect(html).toContain("Discover authentic English");
     expect(html).toContain("metadata is fetched without generating lessons or calling AI");
     expect(html).toContain("Cybersecurity News");

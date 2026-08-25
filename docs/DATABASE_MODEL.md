@@ -12,6 +12,8 @@ M6 adds no persistence or migration. The curated source registry is application 
 
 M7 also adds no persistence or migration. `PodcastEpisode` metadata and `TranscriptDocument`/speaker turns are transient request or browser-session values, not a transcript archive. A future model could add bounded podcast source/episode metadata only if a product need arises; it must not turn third-party transcript text, audio bytes, or transcript HTML into durable storage without a separate rights, retention, and product decision.
 
+M8 adds no persistence or migration. `ProgressSnapshot` is computed on demand from the bounded local stores and is never stored as a second source of truth. The existing `progress_snapshots` row below remains a future table concept only, appropriate only after a separate user, retention, privacy, and cross-device decision. M8 adds optional `revision_reviewed_at` only to the browser-local writing-session contract for newly completed explicit revision reviews; legacy sessions retain no inferred value.
+
 | Table | Purpose | Important relationships |
 | --- | --- | --- |
 | `sources` | Configured source identity, adapter kind, and optional endpoint. | One-to-many `feed_items`. |

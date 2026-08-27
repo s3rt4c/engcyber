@@ -1,11 +1,12 @@
 export interface BrowserVoice { readonly name: string; readonly lang: string; readonly voiceURI: string; }
-export interface BrowserUtterance { lang: string; rate: number; voice: BrowserVoice | null; onend: (() => void) | null; onerror: (() => void) | null; }
+export interface BrowserUtterance { lang: string; rate: number; voice: BrowserVoice | null; onstart: (() => void) | null; onend: (() => void) | null; onerror: (() => void) | null; }
 export interface BrowserSpeechEngine { getVoices(): BrowserVoice[]; speak(utterance: BrowserUtterance): void; cancel(): void; onvoiceschanged: (() => void) | null; }
 export type BrowserUtteranceConstructor = new (text: string) => BrowserUtterance;
 
 export class BrowserSpeechSynthesis {
   private voices: BrowserVoice[] = [];
   private speaking = false;
+  private queuedTurns: string[] = [];
 
   constructor(private readonly input: { readonly speech: BrowserSpeechEngine | null; readonly Utterance: BrowserUtteranceConstructor | null; readonly locale?: string }) {
     this.refreshVoices();
@@ -26,24 +27,46 @@ export class BrowserSpeechSynthesis {
     return english.find((voice) => voice.lang.toLocaleLowerCase() === locale) ?? english.find((voice) => voice.lang.toLocaleLowerCase().startsWith(locale.slice(0, 2))) ?? english[0];
   }
 
-  speak(text: string, rate: number): boolean {
+  private start(text: string, rate: number, callbacks: { readonly onStart?: () => void; readonly onEnd?: () => void; readonly onError?: () => void } = {}): boolean {
     if (!this.input.speech || !this.input.Utterance || !text.trim()) return false;
-    this.stop();
     try {
       const utterance = new this.input.Utterance(text);
       const voice = this.preferredVoice();
       utterance.lang = voice?.lang ?? "en-US";
       utterance.voice = voice;
       utterance.rate = rate;
-      utterance.onend = () => { this.speaking = false; };
-      utterance.onerror = () => { this.speaking = false; };
+      utterance.onstart = () => callbacks.onStart?.();
+      utterance.onend = () => { this.speaking = false; callbacks.onEnd?.(); };
+      utterance.onerror = () => { this.speaking = false; this.queuedTurns = []; callbacks.onError?.(); };
       this.speaking = true;
       this.input.speech.speak(utterance);
       return true;
     } catch { this.speaking = false; return false; }
   }
 
+  speak(text: string, rate: number): boolean {
+    this.stop();
+    return this.start(text, rate);
+  }
+
+  speakSequence(turns: readonly string[], rate: number, callbacks: { readonly onStart?: () => void; readonly onError?: () => void } = {}): boolean {
+    const queue = turns.map((turn) => turn.trim()).filter(Boolean);
+    if (!queue.length) return false;
+    this.stop();
+    this.queuedTurns = queue;
+    let started = false;
+    const onStart = () => { if (!started) { started = true; callbacks.onStart?.(); } };
+    const next = (): void => {
+      const turn = this.queuedTurns.shift();
+      if (!turn) return;
+      if (!this.start(turn, rate, { onStart, onEnd: next, onError: callbacks.onError })) this.queuedTurns = [];
+    };
+    const first = this.queuedTurns.shift();
+    return first ? this.start(first, rate, { onStart, onEnd: next, onError: callbacks.onError }) : false;
+  }
+
   stop(): void {
+    this.queuedTurns = [];
     try { this.input.speech?.cancel(); } catch { /* Browser speech failures are local and non-fatal. */ }
     this.speaking = false;
   }

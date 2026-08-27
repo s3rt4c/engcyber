@@ -128,4 +128,19 @@ Task 2 local draft -- explicit Analyze / Review --> /api/ielts/writing/analyze
                                                 --> strict domain validation + ErrorMemoryStore
 ```
 
-The two capabilities (`ielts_reading_generation`, `ielts_writing_feedback`) reuse the configured lesson model and existing transient retry boundary. Both Gemini and OpenAI adapters return structured output, which is validated by the canonical domain before a client can persist it. They have no tools, web search, URL context, code execution, or external exam API. Progress reads the new local store alongside existing sources; IELTS remains a separate evidence section and active-day contributor, not an M8 Learning Balance dimension or assessment engine.
+The two capabilities (`ielts_reading_generation`, `ielts_writing_feedback`) reuse the configured lesson model and existing transient retry boundary. Both Gemini and OpenAI adapters return structured output, which is validated by the canonical domain before a client can persist it. They have no tools, web search, URL context, code execution, or external exam API. Reading and Writing remain separate IELTS evidence and active-day contributors, not an M8 Learning Balance dimension or assessment engine.
+
+## M12 IELTS-oriented Listening foundations
+
+M0–M11 are accepted. M12 is implemented and awaiting merge; M13 has not started. M12 adds a framework-independent `src/domain/ielts-listening.ts` and immutable application-owned `src/domain/ielts-listening-bank.ts`. The dedicated `IeltsListeningSession` only references a definition ID; scripts and transcripts stay in application content rather than browser persistence. `/ielts/listening` uses the existing browser-local `IeltsPracticeStore` to list, start, resume, and repeat the eight definitions, while `/ielts/listening/[sessionId]` plays structured turns, saves answers, and freezes a completed review. The existing `BrowserSpeechSynthesis` seam is extended for safely queued turns rather than creating a second browser audio layer.
+
+```
+application-owned listening definition --> local session reference + answers
+                                     --> BrowserSpeechSynthesis queued turns
+                                     --> explicit local Submit
+                                     --> deterministic local grade + transcript review
+                                     --> IeltsPracticeStore listening collection
+                                     --> Progress evidence / Active Day / M8 Listening balance
+```
+
+No M12 path calls an API route, AI provider, network audio service, microphone, recorder, STT, or speech-recognition API. Browser synthesis unavailability remains a visible local failure state and never substitutes an early transcript. SpeechSynthesis invocation and `onstart` were verified by browser automation; physical audible output was not independently verified, the retained non-blocking M12 PASS WITH NOTE. Completed Listening is direct evidence for the existing M8 Listening balance; it does not create or alter M5 lesson-derived dictation/shadowing records. There is no Speaking route, state, provider capability, scoring, or analytics. Speaking remains external to EngCyber through ChatGPT Live / Voice.

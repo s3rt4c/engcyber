@@ -6,6 +6,7 @@ class FakeUtterance {
   lang = "";
   rate = 1;
   voice: FakeVoice | null = null;
+  onstart: (() => void) | null = null;
   onend: (() => void) | null = null;
   onerror: (() => void) | null = null;
   constructor(readonly text: string) {}
@@ -44,5 +45,27 @@ describe("M5 browser speech", () => {
     tts.stop();
     expect(speech.cancelCount).toBe(2);
     expect(new BrowserSpeechSynthesis({ speech: null, Utterance: null }).speak("Sentence.", 1)).toBe(false);
+  });
+
+  it("queues authored script turns without treating unavailable browser speech as playback", () => {
+    const speech = new FakeSpeech();
+    const tts = new BrowserSpeechSynthesis({ speech, Utterance: FakeUtterance, locale: "en-US" });
+    expect(tts.speakSequence(["First authored turn.", "Second authored turn."], 1)).toBe(true);
+    expect(speech.spoken.map((utterance) => utterance.text)).toEqual(["First authored turn."]);
+    speech.spoken[0]?.onend?.();
+    expect(speech.spoken.map((utterance) => utterance.text)).toEqual(["First authored turn.", "Second authored turn."]);
+    expect(new BrowserSpeechSynthesis({ speech: null, Utterance: null }).speakSequence(["Unavailable"], 1)).toBe(false);
+  });
+
+  it("reports the first actual utterance start and a synthesis failure to the caller", () => {
+    const speech = new FakeSpeech();
+    const tts = new BrowserSpeechSynthesis({ speech, Utterance: FakeUtterance, locale: "en-US" });
+    let starts = 0;
+    let failures = 0;
+    expect(tts.speakSequence(["A turn."], 1, { onStart: () => { starts += 1; }, onError: () => { failures += 1; } })).toBe(true);
+    speech.spoken[0]?.onstart?.();
+    expect(starts).toBe(1);
+    speech.spoken[0]?.onerror?.();
+    expect(failures).toBe(1);
   });
 });

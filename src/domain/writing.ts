@@ -2,20 +2,20 @@ import { z } from "zod";
 import type { Content } from "@/domain/models";
 import type { LessonSource } from "@/domain/lesson";
 
-const taxonomy = {
+export const writingTaxonomy = {
   grammar: ["tense", "subject_verb_agreement", "article", "preposition", "word_order", "auxiliary_verb", "passive_voice", "singular_plural", "sentence_structure"],
   vocabulary: ["wrong_word", "word_form", "collocation", "repetition", "informal_usage", "technical_vocabulary"],
   coherence: ["missing_connector", "unclear_sequence", "unclear_reference", "incomplete_explanation", "off_topic"],
   technical_accuracy: ["incorrect_security_concept", "incorrect_ai_concept", "incorrect_sequence", "unsupported_claim", "missing_critical_detail"],
 } as const;
 
-export type WritingErrorCategory = keyof typeof taxonomy;
-export type WritingErrorSubcategory = (typeof taxonomy)[WritingErrorCategory][number];
+export type WritingErrorCategory = keyof typeof writingTaxonomy;
+export type WritingErrorSubcategory = (typeof writingTaxonomy)[WritingErrorCategory][number];
 export type ErrorSeverity = "minor" | "moderate" | "major" | "critical";
 export type ErrorPatternStatus = "needs_practice" | "improving" | "mastered" | "returned";
 
 const categorySchema = z.enum(["grammar", "vocabulary", "coherence", "technical_accuracy"]);
-const subcategorySchema = z.enum([...taxonomy.grammar, ...taxonomy.vocabulary, ...taxonomy.coherence, ...taxonomy.technical_accuracy]);
+const subcategorySchema = z.enum([...writingTaxonomy.grammar, ...writingTaxonomy.vocabulary, ...writingTaxonomy.coherence, ...writingTaxonomy.technical_accuracy]);
 const severitySchema = z.enum(["minor", "moderate", "major", "critical"]);
 const boundedText = (minimum: number, maximum: number) => z.string().trim().min(minimum).max(maximum);
 
@@ -29,7 +29,7 @@ const taxonomyIssueSchema = z.object({
   confidence: z.number().min(0).max(1),
   sourceEvidence: boundedText(1, 600).optional(),
 }).strict().superRefine((issue, context) => {
-  if (!taxonomy[issue.category].includes(issue.subcategory as never)) {
+  if (!writingTaxonomy[issue.category].includes(issue.subcategory as never)) {
     context.addIssue({ code: "custom", path: ["subcategory"], message: "The subcategory is not valid for this category." });
   }
   if (issue.category === "technical_accuracy" && !issue.sourceEvidence) {
@@ -258,7 +258,7 @@ function zodFailure(message: string, path: PropertyKey[] = []) {
 }
 
 function validSubcategory(category: WritingErrorCategory, subcategory: WritingErrorSubcategory): boolean {
-  return taxonomy[category].includes(subcategory as never);
+  return writingTaxonomy[category].includes(subcategory as never);
 }
 
 export function canonicalPatternKey(category: WritingErrorCategory, subcategory: WritingErrorSubcategory): string {

@@ -8,6 +8,7 @@ export const primaryNavigation = [
   { href: "/", label: "Home" },
   { href: "/discover", label: "Discover" },
   { href: "/library", label: "Library" },
+  { href: "/ielts", label: "IELTS Practice" },
   { href: "/review", label: "Review" },
   { href: "/vocabulary", label: "Vocabulary" },
   { href: "/listening", label: "Listening" },

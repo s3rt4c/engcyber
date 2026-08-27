@@ -6,6 +6,7 @@ import type { LearnerProfile } from "@/domain/learner-profile";
 import type { GeneratedLesson } from "@/domain/lesson";
 import type { GeneratedWritingFeedback, WritingAnalysisInput } from "@/domain/writing";
 import type { ReviewEvaluation, ReviewEvaluationInput } from "@/domain/review";
+import type { GeneratedIeltsReadingPractice, GeneratedIeltsWritingFeedback, IeltsReadingGenerationInput, IeltsWritingAnalysisInput } from "@/domain/ielts";
 import { createGeminiProvider } from "@/server/ai/gemini";
 import { createOpenAiProvider } from "@/server/ai/openai";
 import { resolveAiProvider, type AiCapability, type AiProviderId, type ResolvedAiProvider } from "@/server/ai/provider";
@@ -18,6 +19,8 @@ export interface AiRuntimeProvider {
   generateLesson(content: Content, learnerProfile?: LearnerProfile): Promise<GeneratedLesson>;
   analyzeWriting(input: WritingAnalysisInput): Promise<GeneratedWritingFeedback>;
   evaluateReview(input: ReviewEvaluationInput): Promise<ReviewEvaluation>;
+  generateIeltsReading(input: IeltsReadingGenerationInput): Promise<GeneratedIeltsReadingPractice>;
+  analyzeIeltsWriting(input: IeltsWritingAnalysisInput): Promise<GeneratedIeltsWritingFeedback>;
 }
 
 export interface AiProviderFactories {

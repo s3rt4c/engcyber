@@ -15,6 +15,8 @@ import { aiProviderStatus, isTransientAiProviderFailure, retryTransientAiOperati
 import { buildExplicitActionInput, type ExplicitActionInput } from "@/domain/sentence-actions";
 import type { ResolvedAiProvider } from "@/server/ai/provider";
 import { reviewEvaluationSchema, type ReviewEvaluation, type ReviewEvaluationInput } from "@/domain/review";
+import { ieltsReadingDraftSchema, providerInitialIeltsWritingFeedbackSchema, providerRevisionIeltsWritingFeedbackSchema, validateIeltsInitialWritingFeedback, validateIeltsReadingDraft, validateIeltsRevisionWritingFeedback, wordCountForIelts, type GeneratedIeltsReadingPractice, type GeneratedIeltsWritingFeedback, type IeltsReadingGenerationInput, type IeltsWritingAnalysisInput } from "@/domain/ielts";
+import { buildIeltsReadingInstructions, buildIeltsWritingInstructions } from "@/server/ai/ielts-prompt";
 
 export interface GeminiClient {
   readonly models: {
@@ -30,12 +32,17 @@ export interface GeminiProvider {
   generateLesson(content: Content, learnerProfile?: LearnerProfile): Promise<GeneratedLesson>;
   analyzeWriting(input: WritingAnalysisInput): Promise<GeneratedWritingFeedback>;
   evaluateReview(input: ReviewEvaluationInput): Promise<ReviewEvaluation>;
+  generateIeltsReading(input: IeltsReadingGenerationInput): Promise<GeneratedIeltsReadingPractice>;
+  analyzeIeltsWriting(input: IeltsWritingAnalysisInput): Promise<GeneratedIeltsWritingFeedback>;
 }
 
 export const geminiLessonJsonSchema = z.toJSONSchema(lessonDraftSchema);
 export const writingInitialFeedbackJsonSchema = z.toJSONSchema(writingInitialFeedbackSchema);
 export const writingRevisionFeedbackJsonSchema = z.toJSONSchema(writingRevisionFeedbackSchema);
 export const reviewEvaluationJsonSchema = z.toJSONSchema(reviewEvaluationSchema);
+export const ieltsReadingJsonSchema = z.toJSONSchema(ieltsReadingDraftSchema);
+export const ieltsInitialWritingJsonSchema = z.toJSONSchema(providerInitialIeltsWritingFeedbackSchema);
+export const ieltsRevisionWritingJsonSchema = z.toJSONSchema(providerRevisionIeltsWritingFeedbackSchema);
 
 export function geminiProviderErrorMessage(error: unknown): string {
   const status = aiProviderStatus(error);
@@ -167,6 +174,26 @@ export function createGeminiProvider(configuration: ResolvedAiProvider, client: 
       const validated = reviewEvaluationSchema.safeParse(parsed);
       if (!validated.success) throw new Error("Review evaluation could not be validated.");
       return validated.data;
+    },
+    async generateIeltsReading(input: IeltsReadingGenerationInput): Promise<GeneratedIeltsReadingPractice> {
+      const sourceProblem = input.sourceText.length > 12_000 ? "This source exceeds the accepted 12,000-character practice bound." : null;
+      if (sourceProblem) throw new Error(sourceProblem);
+      let response: Pick<GenerateContentResponse, "text">;
+      try { response = (await retryTransientAiOperation(() => withAiAttemptTimeout(client.models.generateContent({ model: configuration.lessonModel, contents: buildIeltsReadingInstructions(input), config: { systemInstruction: "You are EngCyber's IELTS-style Reading generator. Return only the requested structured practice. You have no tools, browsing, URL context, or external information.", maxOutputTokens: 2_800, responseMimeType: "application/json", responseJsonSchema: ieltsReadingJsonSchema, thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM } } })))).value; } catch (error) { throw new Error(geminiProviderErrorMessage(error)); }
+      if (!response.text) throw new Error("Gemini returned no structured IELTS Reading practice.");
+      let parsed: unknown; try { parsed = JSON.parse(response.text); } catch { throw new Error("Gemini returned invalid structured IELTS Reading JSON."); }
+      const validated = validateIeltsReadingDraft(parsed, input.sourceText);
+      if (!validated.success) throw new Error("The generated IELTS Reading practice did not pass validation and was not saved.");
+      return { questions: validated.data.questions, model: configuration.lessonModel };
+    },
+    async analyzeIeltsWriting(input: IeltsWritingAnalysisInput): Promise<GeneratedIeltsWritingFeedback> {
+      let response: Pick<GenerateContentResponse, "text">;
+      try { response = (await retryTransientAiOperation(() => withAiAttemptTimeout(client.models.generateContent({ model: configuration.lessonModel, contents: buildIeltsWritingInstructions(input), config: { systemInstruction: "You are EngCyber's IELTS-style writing-feedback assistant. Return only the requested structured feedback. You have no tools, browsing, source grounding, or official assessment role.", maxOutputTokens: 2_800, responseMimeType: "application/json", responseJsonSchema: input.stage === "initial" ? ieltsInitialWritingJsonSchema : ieltsRevisionWritingJsonSchema, thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM } } })))).value; } catch (error) { throw new Error(geminiProviderErrorMessage(error)); }
+      if (!response.text) throw new Error("Gemini returned no structured IELTS Writing feedback.");
+      let parsed: unknown; try { parsed = JSON.parse(response.text); } catch { throw new Error("Gemini returned invalid structured IELTS Writing JSON."); }
+      const validated = input.stage === "initial" ? validateIeltsInitialWritingFeedback(parsed, { draft: input.draft, issueId: randomUUID, wordCount: wordCountForIelts(input.draft) }) : validateIeltsRevisionWritingFeedback(parsed, { draft: input.draft, initialFeedback: input.initialFeedback!, issueId: randomUUID, wordCount: wordCountForIelts(input.draft) });
+      if (!validated.success) throw new Error("The generated IELTS Writing feedback did not pass validation and was not saved.");
+      return { feedback: validated.data, model: configuration.lessonModel };
     },
   };
 }

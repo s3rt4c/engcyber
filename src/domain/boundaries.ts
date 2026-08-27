@@ -1,6 +1,7 @@
 import type { Content, ErrorPattern, ExtractedContent, FeedItem, LessonSentence, Source } from "@/domain/models";
 import type { GeneratedLesson, StoredLesson } from "@/domain/lesson";
 import type { LearnerProfile } from "@/domain/learner-profile";
+import type { IeltsReadingPractice, IeltsWritingSession } from "@/domain/ielts";
 import type { LearningSupportLevel } from "@/domain/learning";
 import type { ErrorOccurrence, PersonalErrorPattern, WritingSession } from "@/domain/writing";
 import type { ReviewEvent, ReviewItem } from "@/domain/review";
@@ -21,5 +22,6 @@ export interface ErrorMemoryStore { snapshot(): Promise<{ readonly occurrences: 
 export interface ReviewStore { snapshot(): Promise<{ readonly items: readonly ReviewItem[]; readonly events: readonly ReviewEvent[] }>; save(items: readonly ReviewItem[], events: readonly ReviewEvent[]): Promise<boolean>; }
 export interface VocabularyReviewStore { snapshot(): Promise<{ readonly items: readonly VocabularyReviewItem[]; readonly events: readonly VocabularyReviewEvent[] }>; save(items: readonly VocabularyReviewItem[], events: readonly VocabularyReviewEvent[]): Promise<boolean>; removePhrase(phraseId: string): Promise<"removed" | "not_found" | "unavailable">; }
 export interface ListeningStore { snapshot(): Promise<{ readonly sessions: readonly ListeningSession[]; readonly attempts: readonly ListeningAttempt[]; readonly shadowingEvents: readonly ShadowingEvent[]; readonly playbackRate: number }>; save(snapshot: { readonly sessions: readonly ListeningSession[]; readonly attempts: readonly ListeningAttempt[]; readonly shadowingEvents: readonly ShadowingEvent[]; readonly playbackRate: number }): Promise<boolean>; }
+export interface IeltsPracticeStore { listReading(): Promise<readonly IeltsReadingPractice[]>; getReading(id: string): Promise<IeltsReadingPractice | null>; getReadingByFingerprint(generationFingerprint: string): Promise<IeltsReadingPractice | null>; saveReading(item: IeltsReadingPractice): Promise<boolean>; listWriting(): Promise<readonly IeltsWritingSession[]>; getWriting(id: string): Promise<IeltsWritingSession | null>; saveWriting(item: IeltsWritingSession): Promise<boolean>; }
 export interface ErrorTracker { record(pattern: ErrorPattern, context: string): Promise<void>; }
 export interface BrowserTts { speak(text: string, rate?: number): void; stop(): void; }

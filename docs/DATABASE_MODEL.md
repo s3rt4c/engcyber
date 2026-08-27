@@ -18,6 +18,8 @@ M9 still adds no PostgreSQL migration. `StoredLessonContext` is an optional brow
 
 M10 also adds no migration. Its browser-local `VocabularyReviewStore` would later map to separate `vocabulary_review_items` and `vocabulary_review_events` tables. Each item references `user_phrases.id` only and owns stage/status/due/counters; each event contains metadata-only outcome and transition fields. It does not duplicate phrase text/context/source, answers, provider output, or generic Error Pattern Review fields. The local MVP retains at most 200 items and newest 1,000 events.
 
+M11 adds no migration. Its dedicated browser-local `IeltsPracticeStore` retains at most 30 validated Reading practices and 30 Task 2 sessions. A future mapping may introduce separate practice/session rows that reference existing `contents` or lessons by stable identity; it must not archive publisher article bodies, full transcripts, raw provider responses, or invent scores. Reading records contain bounded generated questions, selected answer IDs, completion evidence, optional elapsed seconds, source identity/fingerprint, and a generation fingerprint. Task 2 records contain the application-owned prompt ID/type, drafts, validated qualitative feedback, timestamps, and optional elapsed seconds. High-confidence language issues continue to use existing `error_occurrences` rather than an IELTS-specific error table.
+
 | Table | Purpose | Important relationships |
 | --- | --- | --- |
 | `sources` | Configured source identity, adapter kind, and optional endpoint. | One-to-many `feed_items`. |

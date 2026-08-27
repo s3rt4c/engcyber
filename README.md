@@ -2,7 +2,7 @@
 
 EngCyber is a private English-learning web application for progressing from B1 toward B2 / early C1 and IELTS Band 7.0. It centres authentic cybersecurity and AI material, while retaining room for general IELTS content.
 
-## M10 status
+## M11 status
 
 M3 adds an explicit two-attempt writing-learning loop inside generated lessons. The learner writes first, explicitly requests concise structured feedback, revises independently, then explicitly requests a comparison. High-confidence validated errors become browser-local Personal Error Memory; the app does not evaluate text while the learner types or opens a lesson. Gemini is the current personal runtime; OpenAI remains an optional supported provider.
 
@@ -18,7 +18,11 @@ M8 is accepted: its browser-local `/progress` view derives activity evidence fro
 
 M9 is accepted. `/` is the action-first Daily Learning Hub, curated discovery lives at `/discover`, and `/library` lists browser-local lessons and saved phrases. A new `/library/lessons/[lessonId]` page opens cached generated material without recreating a publisher article. Newly saved lessons retain the exact 12,000-character-or-less canonical sanitized lesson source used for generation; older lessons remain usable but explicitly degrade where source-dependent writing cannot be resumed. Home, Library, phrase listing, and cached lesson detail make no provider, feed, article, transcript, or lesson-generation request.
 
-M10 is accepted and awaiting merge. `/vocabulary` is a separate browser-local Phrase & Vocabulary SRS, entered only when the learner explicitly adds a saved phrase. It uses deterministic 1/3/7/14/30/60-day retrieval scheduling, context cloze or source-attribution recall, conservative local exact-answer checking, and metadata-only review events. Vocabulary items reference durable `SavedPhrase` IDs and stay separate from M4 Error Pattern Review. Opening Home, Library, Progress, or Vocabulary makes no provider, feed, article, transcript, lesson-generation, or other network request.
+M10 is accepted. `/vocabulary` is a separate browser-local Phrase & Vocabulary SRS, entered only when the learner explicitly adds a saved phrase. It uses deterministic 1/3/7/14/30/60-day retrieval scheduling, context cloze or source-attribution recall, conservative local exact-answer checking, and metadata-only review events. Vocabulary items reference durable `SavedPhrase` IDs and stay separate from M4 Error Pattern Review.
+
+M0–M10 are accepted. M11 is implemented and awaiting merge; M12 has not started. `/ielts` adds non-official IELTS-style Reading and Writing Task 2 foundations only. Reading uses an explicit server-only structured generation request from a bounded sanitized source (400 words minimum; the existing 12,000-character source bound), generates exactly three multiple-choice plus three True / False / Not Given questions, validates each bounded source excerpt, caches compatible practices locally, and grades answers locally. Task 2 uses one of twelve application-owned prompts, local drafts/timers, four qualitative criteria, bounded language feedback using the existing Error Memory taxonomy, and explicit initial/revision requests only. It never calculates a band, CEFR level, readiness, or examiner score. Opening IELTS, Home, Library, Progress, Reading practice, or Writing practice makes no provider request; only explicit create/analyze/review actions may do so.
+
+M11 acceptance note: two separate UI-triggered Reading attempts reached Gemini, exhausted the existing bounded transient retry path, and returned temporary-unavailability errors without saving malformed or partial practice. Writing live calls were not attempted under the accepted stop rule. This is an external provider-availability limitation, not a successful live-provider verification; automated and non-live verification remain green, and no retry, schema, or provider behavior was weakened.
 
 The core flow is deliberately on demand: `discover metadata -> learner opens content -> optional sentence help -> learner requests lesson`. Discovery and ordinary reading never generate a lesson.
 

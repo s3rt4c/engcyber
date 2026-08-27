@@ -112,3 +112,20 @@ M9 remains client-local and read-only at its aggregation boundary. Existing loca
 M10 adds a separate client-only `VocabularyReviewStore` alongside PhraseStore, not a second use of M4 Error Pattern Review. Its pure domain scheduler accepts `VocabularyReviewItem` state and a learner outcome, and returns only the next item plus a metadata-only `VocabularyReviewEvent`. Item identity is the durable phrase ID; PhraseStore remains the source of phrase/context/source information. The `/vocabulary` route reads those two local stores, chooses at most ten due items by `dueAt` then `phraseId`, and uses a locally generated exact-context cloze or source-recall fallback. No server module, provider capability, API route, feed, article, transcript, or lesson generation is imported or contacted.
 
 `VocabularyReviewStore` keeps a versioned bounded envelope (200 items, newest 1,000 events) and validates all state with Zod. Corrupt data is an empty read-only fallback without clearing raw browser data. Explicit review removal deletes just one item/event history. Coordinated phrase deletion first attempts vocabulary cleanup and blocks phrase deletion on cleanup failure, so ordinary read paths never mutate either store. Progress derives vocabulary metrics from the same state without adding vocabulary to M8’s Lesson/Writing/Review/Listening balance dimensions.
+
+## M11 IELTS-style foundations
+
+M11 adds a framework-independent `src/domain/ielts.ts` plus a dedicated versioned browser-local `IeltsPracticeStore`; it does not alter LessonStore, WritingSessionStore, ErrorMemoryStore, or the existing Review stores. `/ielts`, `/ielts/reading/[practiceId]`, and `/ielts/writing/[sessionId]` load local state only. Current ReadingView and eligible saved lesson contexts expose explicit creation actions; legacy lessons without context remain local but cannot reconstruct or refetch a Reading source.
+
+```
+sanitized Content / StoredLessonContext -- explicit action --> /api/ielts/reading/*
+                                                        --> server-only provider capability
+                                                        --> strict domain validation
+                                                        --> browser-local IeltsPracticeStore
+
+Task 2 local draft -- explicit Analyze / Review --> /api/ielts/writing/analyze
+                                                --> server-only provider capability
+                                                --> strict domain validation + ErrorMemoryStore
+```
+
+The two capabilities (`ielts_reading_generation`, `ielts_writing_feedback`) reuse the configured lesson model and existing transient retry boundary. Both Gemini and OpenAI adapters return structured output, which is validated by the canonical domain before a client can persist it. They have no tools, web search, URL context, code execution, or external exam API. Progress reads the new local store alongside existing sources; IELTS remains a separate evidence section and active-day contributor, not an M8 Learning Balance dimension or assessment engine.

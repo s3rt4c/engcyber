@@ -12,6 +12,8 @@ import { generateLessonDraft } from "@/server/openai/lesson-generator";
 import { runSentenceAction } from "@/server/openai/sentence-actions";
 import { analyzeWritingDraft } from "@/server/openai/writing-analyzer";
 import { evaluateReviewAnswer } from "@/server/openai/review-evaluator";
+import { analyzeOpenAiIeltsWriting, generateOpenAiIeltsReading } from "@/server/openai/ielts";
+import type { GeneratedIeltsReadingPractice, GeneratedIeltsWritingFeedback, IeltsReadingGenerationInput, IeltsWritingAnalysisInput } from "@/domain/ielts";
 
 export interface OpenAiProvider {
   readonly id: "openai";
@@ -21,6 +23,8 @@ export interface OpenAiProvider {
   generateLesson(content: Content, learnerProfile?: LearnerProfile): Promise<GeneratedLesson>;
   analyzeWriting(input: WritingAnalysisInput): Promise<GeneratedWritingFeedback>;
   evaluateReview(input: ReviewEvaluationInput): Promise<ReviewEvaluation>;
+  generateIeltsReading(input: IeltsReadingGenerationInput): Promise<GeneratedIeltsReadingPractice>;
+  analyzeIeltsWriting(input: IeltsWritingAnalysisInput): Promise<GeneratedIeltsWritingFeedback>;
 }
 
 export function createOpenAiProvider(configuration: ResolvedAiProvider): OpenAiProvider {
@@ -38,5 +42,7 @@ export function createOpenAiProvider(configuration: ResolvedAiProvider): OpenAiP
     generateLesson: async (content, learnerProfile) => (await retryTransientAiOperation(() => generateLessonDraft(content, { learnerProfile, env }))).value,
     analyzeWriting: async (input) => (await retryTransientAiOperation(() => analyzeWritingDraft(input, env))).value,
     evaluateReview: async (input) => (await retryTransientAiOperation(() => evaluateReviewAnswer(input, env))).value,
+    generateIeltsReading: async (input) => (await retryTransientAiOperation(() => generateOpenAiIeltsReading(input, env))).value,
+    analyzeIeltsWriting: async (input) => (await retryTransientAiOperation(() => analyzeOpenAiIeltsWriting(input, env))).value,
   };
 }

@@ -6,6 +6,7 @@ import type { ListeningAttempt, ShadowingEvent } from "@/domain/listening";
 import type { ReviewEvent, ReviewItem } from "@/domain/review";
 import type { PersonalErrorPattern, WritingSession } from "@/domain/writing";
 import { enrollVocabularyPhrase, type VocabularyReviewEvent } from "@/domain/vocabulary-review";
+import type { IeltsReadingPractice } from "@/domain/ielts";
 
 const now = "2026-08-25T12:00:00.000Z";
 
@@ -53,7 +54,18 @@ function data(overrides: Partial<ProgressSourceData> = {}): ProgressSourceData {
   return { lessons: [], writingSessions: [], errorPatterns: [], reviewItems: [], reviewEvents: [], vocabularyReviewItems: [], vocabularyReviewEvents: [], vocabularyPhraseIds: [], listeningAttempts: [], shadowingEvents: [], ...overrides };
 }
 
+function ieltsReading(completedAt: string): IeltsReadingPractice {
+  const questions = [...[0, 1, 2].map((index) => ({ id: `mc-${index}`, type: "multiple_choice" as const, question: "Which statement is supported by the source?", options: ["a", "b", "c", "d"].map((id) => ({ id, text: id })), correctOptionId: "a", relevantSourceContext: "The source supports this statement.", explanation: "The source states this." })), ...[3, 4, 5].map((index) => ({ id: `tfng-${index}`, type: "true_false_not_given" as const, question: "The source supports this statement.", answer: "not_given" as const, relevantSourceContext: "The source supports this statement.", explanation: "The information is absent." }))];
+  return { id: "ielts-reading", generationFingerprint: "ielts-fingerprint", sourceId: "source", sourceFingerprint: "sha256:source", sourceTitle: "Source", sourceUrl: null, questions, answers: { "mc-0": "a", "mc-1": "b", "mc-2": "b", "tfng-3": "not_given", "tfng-4": "false", "tfng-5": "not_given" }, completedAt, elapsedSeconds: 120, createdAt: completedAt, updatedAt: completedAt };
+}
+
 describe("M8 progress aggregation", () => {
+  it("adds only completed IELTS practice to separate evidence and active days", () => {
+    const snapshot = buildProgressSnapshot(data({ ieltsReadingPractices: [ieltsReading("2026-08-24T10:00:00.000Z")] }), { range: "7d", now, timeZone: "UTC" });
+    expect(snapshot.ielts).toEqual({ reading: { completed: 1, correct: 3, total: 6 }, writing: { initialAnalyses: 0, revisionReviews: 0, timedPractices: 1 } });
+    expect(snapshot.activity.activeDays).toBe(1);
+    expect(snapshot.balance).toEqual({ lessons: 0, writing: 0, review: 0, listening: 0 });
+  });
   it("uses local calendar days, deduplicates active days, and excludes future activity", () => {
     const snapshot = buildProgressSnapshot(data({
       lessons: [lesson("one", "2026-08-19T23:30:00.000Z"), lesson("future", "2026-08-26T00:00:00.000Z")],

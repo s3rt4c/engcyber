@@ -14,11 +14,11 @@ const emptyReaders: ProgressReaders = {
 
 describe("M8 local progress loader", () => {
   it("reads only existing store interfaces into source data", async () => {
-    await expect(loadProgressSourceData(emptyReaders)).resolves.toEqual({ lessons: [], writingSessions: [], errorPatterns: [], reviewItems: [], reviewEvents: [], vocabularyReviewItems: [], vocabularyReviewEvents: [], vocabularyPhraseIds: [], listeningAttempts: [], shadowingEvents: [], ieltsReadingPractices: [], ieltsWritingSessions: [] });
+    await expect(loadProgressSourceData(emptyReaders)).resolves.toEqual({ lessons: [], writingSessions: [], errorPatterns: [], reviewItems: [], reviewEvents: [], vocabularyReviewItems: [], vocabularyReviewEvents: [], vocabularyPhraseIds: [], listeningAttempts: [], shadowingEvents: [], ieltsReadingPractices: [], ieltsWritingSessions: [], ieltsListeningSessions: [] });
   });
 
   it("keeps other evidence when one local store is unavailable", async () => {
     const result = await loadProgressSourceData({ ...emptyReaders, reviewStore: { snapshot: async () => { throw new Error("storage unavailable"); } } });
-    expect(result).toMatchObject({ lessons: [], writingSessions: [], errorPatterns: [], reviewItems: [], reviewEvents: [], vocabularyReviewItems: [], vocabularyReviewEvents: [], vocabularyPhraseIds: [], listeningAttempts: [], shadowingEvents: [], ieltsReadingPractices: [], ieltsWritingSessions: [] });
+    expect(result).toMatchObject({ lessons: [], writingSessions: [], errorPatterns: [], reviewItems: [], reviewEvents: [], vocabularyReviewItems: [], vocabularyReviewEvents: [], vocabularyPhraseIds: [], listeningAttempts: [], shadowingEvents: [], ieltsReadingPractices: [], ieltsWritingSessions: [], ieltsListeningSessions: [] });
   });
 });

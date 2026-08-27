@@ -4,6 +4,7 @@ import { reviewPatternLabel, type ReviewEvent, type ReviewItem } from "@/domain/
 import type { PersonalErrorPattern, WritingSession } from "@/domain/writing";
 import { vocabularyReviewCurrentState, type VocabularyReviewEvent, type VocabularyReviewItem } from "@/domain/vocabulary-review";
 import type { IeltsReadingPractice, IeltsWritingSession } from "@/domain/ielts";
+import type { IeltsListeningSession } from "@/domain/ielts-listening";
 
 export type ProgressRange = "7d" | "30d" | "all";
 export type ProgressTimeZone = string;
@@ -21,6 +22,7 @@ export interface ProgressSourceData {
   readonly shadowingEvents: readonly ShadowingEvent[];
   readonly ieltsReadingPractices?: readonly IeltsReadingPractice[];
   readonly ieltsWritingSessions?: readonly IeltsWritingSession[];
+  readonly ieltsListeningSessions?: readonly IeltsListeningSession[];
 }
 
 export interface ProgressOptions {
@@ -91,6 +93,7 @@ export interface LearningBalance {
 export interface IeltsProgressSummary {
   readonly reading: { readonly completed: number; readonly correct: number; readonly total: number };
   readonly writing: { readonly initialAnalyses: number; readonly revisionReviews: number; readonly timedPractices: number };
+  readonly listening: { readonly completed: number; readonly correct: number; readonly total: number };
 }
 
 export type FocusRecommendationKind = "overdue_review" | "overdue_vocabulary" | "due_review" | "due_vocabulary" | "returned_pattern" | "high_priority_pattern" | "neglected_listening" | "neglected_writing" | "neglected_review" | "neglected_lessons" | "revision_follow_through" | "listening_consistency" | "zero_activity";
@@ -269,6 +272,7 @@ export function buildProgressSnapshot(source: ProgressSourceData, options: Progr
   const ieltsReading = selected((source.ieltsReadingPractices ?? []).filter((practice) => practice.completedAt !== null), (practice) => practice.completedAt!, currentWindow, nowMs, options.timeZone);
   const ieltsInitial = selected((source.ieltsWritingSessions ?? []).filter((session) => session.initialAnalyzedAt !== null), (session) => session.initialAnalyzedAt!, currentWindow, nowMs, options.timeZone);
   const ieltsRevision = selected((source.ieltsWritingSessions ?? []).filter((session) => session.revisionReviewedAt !== null), (session) => session.revisionReviewedAt!, currentWindow, nowMs, options.timeZone);
+  const ieltsListening = selected((source.ieltsListeningSessions ?? []).filter((session) => session.completedAt !== null), (session) => session.completedAt!, currentWindow, nowMs, options.timeZone);
 
   const highConfidenceFindings = analyses.reduce((total, session) => total + initialIssues(session).filter((issue) => issue.confidence >= 0.85).length, 0);
   const revisionTotals = revisions.reduce((total, session) => {
@@ -311,10 +315,11 @@ export function buildProgressSnapshot(source: ProgressSourceData, options: Progr
     ...ieltsReading.map((practice) => localDay(practice.completedAt!, options.timeZone)),
     ...ieltsInitial.map((session) => localDay(session.initialAnalyzedAt!, options.timeZone)),
     ...ieltsRevision.map((session) => localDay(session.revisionReviewedAt!, options.timeZone)),
+    ...ieltsListening.map((session) => localDay(session.completedAt!, options.timeZone)),
   ].filter((day): day is string => day !== null)).size;
   const activity: ActivitySummary = { activeDays, lessonsCreated: lessons.length, writingAnalyses: analyses.length, revisionReviews: revisions.length, reviewAttempts: reviewEvents.length, dictationsCompleted: attempts.length, shadowingRepetitions: shadowingEvents.length };
-  const balance: LearningBalance = { lessons: lessons.length, writing: analyses.length + revisions.length, review: reviewEvents.length, listening: attempts.length + shadowingEvents.length };
-  const ielts: IeltsProgressSummary = { reading: { completed: ieltsReading.length, correct: ieltsReading.reduce((total, practice) => total + practice.questions.filter((question) => practice.answers[question.id] === (question.type === "multiple_choice" ? question.correctOptionId : question.answer)).length, 0), total: ieltsReading.reduce((total, practice) => total + practice.questions.length, 0) }, writing: { initialAnalyses: ieltsInitial.length, revisionReviews: ieltsRevision.length, timedPractices: [...ieltsReading, ...ieltsInitial, ...ieltsRevision].filter((entry) => entry.elapsedSeconds !== null).length } };
+  const balance: LearningBalance = { lessons: lessons.length, writing: analyses.length + revisions.length, review: reviewEvents.length, listening: attempts.length + shadowingEvents.length + ieltsListening.length };
+  const ielts: IeltsProgressSummary = { reading: { completed: ieltsReading.length, correct: ieltsReading.reduce((total, practice) => total + practice.questions.filter((question) => practice.answers[question.id] === (question.type === "multiple_choice" ? question.correctOptionId : question.answer)).length, 0), total: ieltsReading.reduce((total, practice) => total + practice.questions.length, 0) }, writing: { initialAnalyses: ieltsInitial.length, revisionReviews: ieltsRevision.length, timedPractices: [...ieltsReading, ...ieltsInitial, ...ieltsRevision].filter((entry) => entry.elapsedSeconds !== null).length }, listening: { completed: ieltsListening.length, correct: ieltsListening.reduce((total, session) => total + (session.correctCount ?? 0), 0), total: ieltsListening.reduce((total, session) => total + (session.totalCount ?? 0), 0) } };
   const writing: WritingProgressSummary = { analyses: analyses.length, revisions: revisions.length, highConfidenceFindings, averageHighConfidenceFindings: analyses.length ? highConfidenceFindings / analyses.length : null, resolvedInRevisions: revisionTotals.resolved, remainingInRevisions: revisionTotals.remaining, resolutionRate: evaluated ? revisionTotals.resolved / evaluated : null };
   const review: ReviewProgressSummary = { current: { dueNow, overdue, masteredItems: source.reviewItems.filter((item) => item.status === "mastered").length }, events: { attempts: reviewEvents.length, scheduled, practiceNow, correct, incorrect, uncertain, successRate: correct + incorrect ? correct / (correct + incorrect) : null } };
   const vocabularyCurrent = vocabularyReviewCurrentState(source.vocabularyReviewItems, source.vocabularyPhraseIds.map((id) => ({ id })), options.now, options.timeZone);
@@ -330,6 +335,7 @@ export function buildProgressSnapshot(source: ProgressSourceData, options: Progr
     ...reviewEvents.map((event) => ({ timestamp: event.reviewedAt, activity: "review" as const })),
     ...attempts.map((attempt) => ({ timestamp: attempt.attemptedAt, activity: "listening" as const })),
     ...shadowingEvents.map((event) => ({ timestamp: event.repeatedAt, activity: "listening" as const })),
+    ...ieltsListening.map((session) => ({ timestamp: session.completedAt!, activity: "listening" as const })),
   ];
   const timelineConfig = timelineDays(options.range, nowDay);
   const allTimeTimelineEvents = events;

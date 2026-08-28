@@ -7,7 +7,7 @@ import type { IeltsListeningSession } from "@/domain/ielts-listening";
 import type { ReviewEvent, ReviewItem } from "@/domain/review";
 import type { PersonalErrorPattern, WritingSession } from "@/domain/writing";
 import { enrollVocabularyPhrase, type VocabularyReviewEvent } from "@/domain/vocabulary-review";
-import type { IeltsReadingPractice } from "@/domain/ielts";
+import type { IeltsReadingPractice, IeltsWritingSession } from "@/domain/ielts";
 
 const now = "2026-08-25T12:00:00.000Z";
 
@@ -64,13 +64,22 @@ function ieltsReading(completedAt: string): IeltsReadingPractice {
   return { id: "ielts-reading", generationFingerprint: "ielts-fingerprint", sourceId: "source", sourceFingerprint: "sha256:source", sourceTitle: "Source", sourceUrl: null, questions, answers: { "mc-0": "a", "mc-1": "b", "mc-2": "b", "tfng-3": "not_given", "tfng-4": "false", "tfng-5": "not_given" }, completedAt, elapsedSeconds: 120, createdAt: completedAt, updatedAt: completedAt };
 }
 
+function ieltsWriting(id: string, initialAnalyzedAt: string | null, revisionReviewedAt: string | null = null): IeltsWritingSession {
+  return {
+    id, promptId: "technology-opinion", promptType: "opinion", draft: "A saved Task 2 response with meaningful learner text.", revisedDraft: revisionReviewedAt ? "A revised Task 2 response with meaningful learner text." : null,
+    initialFeedback: initialAnalyzedAt ? { stage: "initial", criteria: { taskResponse: { strengths: [], developmentPoints: [], nextAction: "Develop the main point." }, coherenceAndCohesion: { strengths: [], developmentPoints: [], nextAction: "Link paragraphs." }, lexicalResource: { strengths: [], developmentPoints: [], nextAction: "Use precise vocabulary." }, grammaticalRangeAndAccuracy: { strengths: [], developmentPoints: [], nextAction: "Check agreement." } }, languageIssues: [], revisionPriorities: [], wordCount: 8 } : null,
+    revisionFeedback: revisionReviewedAt ? { stage: "revision", criteriaComparison: { taskResponse: "More focused.", coherenceAndCohesion: "Clearer links.", lexicalResource: "More precise words.", grammaticalRangeAndAccuracy: "More accurate sentences." }, resolvedIssueIds: [], remainingIssueIds: [], newLanguageIssues: [], improvedExample: null, wordCount: 8 } : null,
+    initialAnalyzedAt, revisionReviewedAt, elapsedSeconds: null, createdAt: "2026-08-24T09:00:00.000Z", updatedAt: revisionReviewedAt ?? initialAnalyzedAt ?? "2026-08-24T09:00:00.000Z",
+  };
+}
+
 describe("M8 progress aggregation", () => {
   it("adds each completed IELTS Listening session once to dedicated evidence, active days, and Listening balance", () => {
     const snapshot = buildProgressSnapshot(data({ ieltsListeningSessions: [ieltsListening("completed", "2026-08-24T10:00:00.000Z"), ieltsListening("unfinished", null)] }), { range: "7d", now, timeZone: "UTC" });
     expect(snapshot.ielts.listening).toEqual({ completed: 1, correct: 4, total: 6 });
     expect(snapshot.activity.activeDays).toBe(1);
     expect(snapshot.balance.listening).toBe(1);
-    expect(snapshot.timeline.find((day) => day.date === "2026-08-24")).toMatchObject({ listening: 1 });
+    expect(snapshot.timeline.find((day) => day.date === "2026-08-24")).toMatchObject({ listening: 0, ielts: 1 });
   });
 
   it("adds only completed IELTS practice to separate evidence and active days", () => {
@@ -78,6 +87,30 @@ describe("M8 progress aggregation", () => {
     expect(snapshot.ielts).toEqual({ reading: { completed: 1, correct: 3, total: 6 }, writing: { initialAnalyses: 0, revisionReviews: 0, timedPractices: 1 }, listening: { completed: 0, correct: 0, total: 0 } });
     expect(snapshot.activity.activeDays).toBe(1);
     expect(snapshot.balance).toEqual({ lessons: 0, writing: 0, review: 0, listening: 0 });
+  });
+
+  it("places each meaningful IELTS completion kind in the explicit timeline category without changing Learning Balance", () => {
+    const snapshot = buildProgressSnapshot(data({
+      ieltsReadingPractices: [ieltsReading("2026-08-24T10:00:00.000Z")],
+      ieltsWritingSessions: [ieltsWriting("writing", "2026-08-24T10:30:00.000Z", "2026-08-24T11:00:00.000Z")],
+      ieltsListeningSessions: [ieltsListening("listening", "2026-08-24T11:30:00.000Z")],
+    }), { range: "7d", now, timeZone: "UTC" });
+
+    expect(snapshot.timeline.find((day) => day.date === "2026-08-24")).toMatchObject({ ielts: 4, listening: 0 });
+    expect(snapshot.activity.activeDays).toBe(1);
+    expect(snapshot.balance).toEqual({ lessons: 0, writing: 0, review: 0, listening: 1 });
+  });
+
+  it.each([
+    ["Reading completion", { ieltsReadingPractices: [ieltsReading("2026-08-24T10:00:00.000Z")] }],
+    ["Writing initial feedback", { ieltsWritingSessions: [ieltsWriting("initial", "2026-08-24T10:00:00.000Z")] }],
+    ["Writing revision review", { ieltsWritingSessions: [ieltsWriting("revision", "2026-08-23T10:00:00.000Z", "2026-08-24T10:00:00.000Z")] }],
+    ["Listening completion", { ieltsListeningSessions: [ieltsListening("listening", "2026-08-24T10:00:00.000Z")] }],
+  ])("does not show generic zero-activity Focus after meaningful IELTS %s", (_label, source) => {
+    const snapshot = buildProgressSnapshot(data(source), { range: "7d", now, timeZone: "UTC" });
+
+    expect(snapshot.focus.map((entry) => entry.kind)).not.toContain("zero_activity");
+    expect(snapshot.balance.lessons + snapshot.balance.writing + snapshot.balance.review + snapshot.balance.listening).toBe("ieltsListeningSessions" in source ? 1 : 0);
   });
   it("uses local calendar days, deduplicates active days, and excludes future activity", () => {
     const snapshot = buildProgressSnapshot(data({

@@ -34,9 +34,9 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 
 function Timeline({ snapshot }: { snapshot: ProgressSnapshot }) {
   return <section className="mt-8" aria-label="Activity timeline"><h2 className="text-xl font-semibold">Activity</h2><p className="mt-1 text-sm text-slate-400">{snapshot.timelineLabel}</p><ol className="mt-4 grid grid-cols-7 gap-2 sm:grid-cols-10" aria-label={snapshot.timelineLabel}>{snapshot.timeline.map((day) => {
-    const total = day.lessons + day.writing + day.review + day.listening;
+    const total = day.lessons + day.writing + day.review + day.listening + day.ielts;
     return <li className="rounded border border-slate-800 bg-slate-900 p-2 text-center" key={day.date}><div className={`mx-auto h-10 w-3 rounded ${total ? "bg-cyan-300" : "bg-slate-800"}`} style={{ opacity: total ? Math.min(1, 0.35 + total / 6) : 1 }} /><p className="mt-2 text-xs text-slate-400">{day.date.slice(5)}</p><p className="text-xs text-slate-300">{total}</p></li>;
-  })}</ol><p className="mt-3 text-xs text-slate-500">Lessons, writing submissions, reviews, and listening submissions are counted. Page opens and audio playback are not.</p></section>;
+  })}</ol><p className="mt-3 text-xs text-slate-500">Lessons, writing submissions, reviews, listening submissions, and completed IELTS activity are counted. Page opens and audio playback are not.</p></section>;
 }
 
 function ProgressContent({ snapshot }: { snapshot: ProgressSnapshot }) {

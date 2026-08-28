@@ -148,4 +148,18 @@ application-owned listening definition --> local session reference + answers
 
 `src/domain/backup.ts` owns the strict, framework-independent manifest/schema, version seam, count-only preview, fixed caps, and cross-store invariants. `src/client/local-backup.ts` decodes the eight existing localStorage envelopes without mutation, normalizes explicit legacy phrase records, emits a canonical manifest, and serializes only current envelope shapes. `src/client/backup-storage.ts` owns the exact-key snapshot/write/readback/rollback transaction; it never enumerates or clears unrelated browser storage. `/backup` is a client route with browser `File` and download APIs only, so it has no server/provider/network path. Import parsing/validation completes before preview; only explicit Replace calls the transaction and returns to `/backup?restored=1` after success.
 
+## M14 derived IELTS continuity
+
+`src/domain/ielts-continuity.ts` accepts only existing Reading, Task 2, and Listening records and returns deterministic continuation and completed-activity view models. It has no storage, Next.js, browser, provider, or network dependency. Home reads the same accepted `IeltsPracticeStore` through its existing all-local loader and renders a compact, empty-state-free continuation section. `/ielts` reads its already-local collections and uses the selectors for its bounded Continue and Recent IELTS activity sections.
+
+```
+IeltsPracticeStore records -- read only --> ielts-continuity selectors
+                                      |             |
+                                      |             +--> Home (max 3 continuations)
+                                      |             +--> /ielts (max 3 continuations, max 5 activity items)
+                                      +--> Progress explicit IELTS timeline category
+```
+
+Progress uses the completed-activity selector only once for timeline representation, so one completed Listening session creates one IELTS timeline event rather than a legacy Listening event plus a second event. Active Days and Learning Balance retain their accepted calculations. The Focus layer receives only a boolean that meaningful selected IELTS completion exists, and uses it only to suppress generic zero-activity guidance. No M14 state is persisted, so M13 backup keeps its eight-domain manifest and version unchanged.
+
 No M12 path calls an API route, AI provider, network audio service, microphone, recorder, STT, or speech-recognition API. Browser synthesis unavailability remains a visible local failure state and never substitutes an early transcript. SpeechSynthesis invocation and `onstart` were verified by browser automation; physical audible output was not independently verified, the retained non-blocking M12 PASS WITH NOTE. Completed Listening is direct evidence for the existing M8 Listening balance; it does not create or alter M5 lesson-derived dictation/shadowing records. There is no Speaking route, state, provider capability, scoring, or analytics. Speaking remains external to EngCyber through ChatGPT Live / Voice.

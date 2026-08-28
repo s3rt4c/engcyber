@@ -5,6 +5,7 @@ import type { PersonalErrorPattern, WritingSession } from "@/domain/writing";
 import { vocabularyReviewCurrentState, type VocabularyReviewEvent, type VocabularyReviewItem } from "@/domain/vocabulary-review";
 import type { IeltsReadingPractice, IeltsWritingSession } from "@/domain/ielts";
 import type { IeltsListeningSession } from "@/domain/ielts-listening";
+import { selectIeltsActivity } from "@/domain/ielts-continuity";
 
 export type ProgressRange = "7d" | "30d" | "all";
 export type ProgressTimeZone = string;
@@ -37,6 +38,7 @@ export interface ProgressDay {
   readonly writing: number;
   readonly review: number;
   readonly listening: number;
+  readonly ielts: number;
 }
 
 export interface ActivitySummary {
@@ -128,7 +130,7 @@ export const progressListeningTrendMinimumDifference = 5;
 const maximumFocusRecommendations = 3;
 const recentAllTimeTimelineDays = 30;
 
-type DatedEvent = { readonly timestamp: string; readonly activity: "lessons" | "writing" | "review" | "listening" };
+type DatedEvent = { readonly timestamp: string; readonly activity: "lessons" | "writing" | "review" | "listening" | "ielts" };
 
 function validInstant(value: string): Date | null {
   const instant = new Date(value);
@@ -211,7 +213,7 @@ function listeningTrend(current: readonly ListeningAttempt[], previous: readonly
 }
 
 function timeline(days: readonly string[], events: readonly DatedEvent[], timeZone: ProgressTimeZone): ProgressDay[] {
-  const byDay = new Map(days.map((date) => [date, { date, lessons: 0, writing: 0, review: 0, listening: 0 }]));
+  const byDay = new Map(days.map((date) => [date, { date, lessons: 0, writing: 0, review: 0, listening: 0, ielts: 0 }]));
   for (const event of events) {
     const day = localDay(event.timestamp, timeZone);
     const current = day ? byDay.get(day) : undefined;
@@ -226,7 +228,7 @@ function timelineDays(range: ProgressRange, nowDay: string): { readonly label: s
   return { label: range === "all" ? "Recent 30-day activity" : "Daily activity", days: Array.from({ length: count }, (_, index) => addDays(start, index)) };
 }
 
-function buildFocus(input: { readonly review: ReviewProgressSummary; readonly vocabulary: VocabularyProgressSummary; readonly errorPatterns: readonly PersonalErrorPattern[]; readonly balance: LearningBalance; readonly writing: WritingProgressSummary; readonly listening: ListeningProgressSummary }): FocusRecommendation[] {
+function buildFocus(input: { readonly review: ReviewProgressSummary; readonly vocabulary: VocabularyProgressSummary; readonly errorPatterns: readonly PersonalErrorPattern[]; readonly balance: LearningBalance; readonly writing: WritingProgressSummary; readonly listening: ListeningProgressSummary; readonly hasMeaningfulIeltsActivity: boolean }): FocusRecommendation[] {
   const focus: FocusRecommendation[] = [];
   const add = (entry: FocusRecommendation) => { if (focus.length < maximumFocusRecommendations) focus.push(entry); };
   if (input.review.current.overdue) add({ kind: "overdue_review", action: "review", message: `You have ${input.review.current.overdue} overdue error-pattern review${input.review.current.overdue === 1 ? "" : "s"}.` });
@@ -250,7 +252,7 @@ function buildFocus(input: { readonly review: ReviewProgressSummary; readonly vo
   }
   if (input.writing.analyses >= 2 && input.writing.revisions / input.writing.analyses < 0.5) add({ kind: "revision_follow_through", action: "library", message: "Try revising more of your analyzed writing instead of only reviewing feedback." });
   if (input.listening.dictations > 0 && input.listening.dictations < progressListeningTrendMinimumAttempts) add({ kind: "listening_consistency", action: "listening", message: "Complete a few more dictations before comparing your recent accuracy." });
-  if (!otherActivity && !focus.length) add({ kind: "zero_activity", action: "discover", message: "Start with one lesson or a short review session." });
+  if (!otherActivity && !input.hasMeaningfulIeltsActivity && !focus.length) add({ kind: "zero_activity", action: "discover", message: "Start with one lesson or a short review session." });
   return focus;
 }
 
@@ -273,6 +275,7 @@ export function buildProgressSnapshot(source: ProgressSourceData, options: Progr
   const ieltsInitial = selected((source.ieltsWritingSessions ?? []).filter((session) => session.initialAnalyzedAt !== null), (session) => session.initialAnalyzedAt!, currentWindow, nowMs, options.timeZone);
   const ieltsRevision = selected((source.ieltsWritingSessions ?? []).filter((session) => session.revisionReviewedAt !== null), (session) => session.revisionReviewedAt!, currentWindow, nowMs, options.timeZone);
   const ieltsListening = selected((source.ieltsListeningSessions ?? []).filter((session) => session.completedAt !== null), (session) => session.completedAt!, currentWindow, nowMs, options.timeZone);
+  const ieltsActivity = selected(selectIeltsActivity({ reading: source.ieltsReadingPractices ?? [], writing: source.ieltsWritingSessions ?? [], listening: source.ieltsListeningSessions ?? [] }), (item) => item.occurredAt, currentWindow, nowMs, options.timeZone);
 
   const highConfidenceFindings = analyses.reduce((total, session) => total + initialIssues(session).filter((issue) => issue.confidence >= 0.85).length, 0);
   const revisionTotals = revisions.reduce((total, session) => {
@@ -335,10 +338,10 @@ export function buildProgressSnapshot(source: ProgressSourceData, options: Progr
     ...reviewEvents.map((event) => ({ timestamp: event.reviewedAt, activity: "review" as const })),
     ...attempts.map((attempt) => ({ timestamp: attempt.attemptedAt, activity: "listening" as const })),
     ...shadowingEvents.map((event) => ({ timestamp: event.repeatedAt, activity: "listening" as const })),
-    ...ieltsListening.map((session) => ({ timestamp: session.completedAt!, activity: "listening" as const })),
+    ...ieltsActivity.map((item) => ({ timestamp: item.occurredAt, activity: "ielts" as const })),
   ];
   const timelineConfig = timelineDays(options.range, nowDay);
   const allTimeTimelineEvents = events;
 
-  return { range: options.range, timeZone: options.timeZone, timelineLabel: timelineConfig.label, activity, writing, errorMemory: { current, topPatterns }, review, vocabulary, listening, balance, ielts, focus: buildFocus({ review, vocabulary, errorPatterns: source.errorPatterns, balance, writing, listening }), timeline: timeline(timelineConfig.days, allTimeTimelineEvents, options.timeZone) };
+  return { range: options.range, timeZone: options.timeZone, timelineLabel: timelineConfig.label, activity, writing, errorMemory: { current, topPatterns }, review, vocabulary, listening, balance, ielts, focus: buildFocus({ review, vocabulary, errorPatterns: source.errorPatterns, balance, writing, listening, hasMeaningfulIeltsActivity: ieltsActivity.length > 0 }), timeline: timeline(timelineConfig.days, allTimeTimelineEvents, options.timeZone) };
 }

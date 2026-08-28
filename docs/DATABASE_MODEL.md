@@ -24,6 +24,8 @@ M0–M12 are accepted and merged. M12 evolves that browser-local envelope in mem
 
 M13 adds no database table or migration. A single portable browser backup manifest groups the existing eight localStorage store payloads under explicit format/app-data versions; it is neither a new persistence store nor cross-device sync. Restore serializes back into those same existing envelopes only after full schema/cap/reference validation. The manifest intentionally excludes browser settings, provider configuration, authentication, secrets, cache, and unrelated origin keys.
 
+M14 adds no database table, browser-local key, envelope field, migration, manifest section, or backup version. Its continuation and completed IELTS activity items are pure transient projections of the existing Reading, Writing Task 2, and Listening collections inside `IeltsPracticeStore`. Their IDs are derived from durable practice/session IDs plus event state, so links remain valid after reload without persisting presentation state. A future cross-device model may derive the same projections from the existing IELTS rows; it must not create a second history or continuation table merely to cache these views.
+
 | Table | Purpose | Important relationships |
 | --- | --- | --- |
 | `sources` | Configured source identity, adapter kind, and optional endpoint. | One-to-many `feed_items`. |

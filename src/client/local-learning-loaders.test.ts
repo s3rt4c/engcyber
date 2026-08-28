@@ -23,7 +23,7 @@ function listening(lessonFingerprint: string, completedAt: string | null): Liste
 }
 
 function data(overrides: Partial<LocalLearningData> = {}): LocalLearningData {
-  return { lessons: [], phrases: [], writingSessions: [], errorPatterns: [], reviewItems: [], reviewEvents: [], vocabularyReviewItems: [], vocabularyReviewEvents: [], listening: { sessions: [], attempts: [], shadowingEvents: [], playbackRate: 1 }, ...overrides };
+  return { lessons: [], phrases: [], writingSessions: [], errorPatterns: [], reviewItems: [], reviewEvents: [], vocabularyReviewItems: [], vocabularyReviewEvents: [], listening: { sessions: [], attempts: [], shadowingEvents: [], playbackRate: 1 }, ielts: { reading: [], writing: [], listening: [] }, ...overrides };
 }
 
 describe("M9 local learning loaders", () => {
@@ -74,6 +74,25 @@ describe("M9 local learning loaders", () => {
     expect(loaded).toMatchObject({ lessons: [], phrases: [], reviewItems: [] });
     expect(fetch).not.toHaveBeenCalled();
     expect(reviewSave).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("reads existing IELTS records locally and derives a separate bounded Home continuation list", async () => {
+    const fetch = vi.fn(() => { throw new Error("Home must not fetch IELTS continuity"); });
+    vi.stubGlobal("fetch", fetch);
+    const now = "2026-08-25T12:00:00.000Z";
+    const reading = { id: "reading-1", generationFingerprint: "reading", sourceId: "source", sourceFingerprint: "sha256:source", sourceTitle: "Source", sourceUrl: null, questions: [], answers: {}, completedAt: null, elapsedSeconds: null, createdAt: now, updatedAt: now };
+    const loaded = await loadLocalLearningData({
+      lessonStore: { list: async () => [] }, phraseStore: { list: async () => [] }, writingSessionStore: { list: async () => [] },
+      errorMemoryStore: { snapshot: async () => ({ occurrences: [], patterns: [] }) }, reviewStore: { snapshot: async () => ({ items: [], events: [] }) }, vocabularyReviewStore: { snapshot: async () => ({ items: [], events: [] }) }, listeningStore: { snapshot: async () => ({ sessions: [], attempts: [], shadowingEvents: [], playbackRate: 1 }) },
+      ieltsPracticeStore: { listReading: async () => [reading], listWriting: async () => [], listListening: async () => [] },
+    });
+    const hub = buildDailyHub(loaded, { now: "2026-08-25T13:00:00.000Z", timeZone: "UTC" });
+
+    expect(loaded.ielts).toEqual({ reading: [reading], writing: [], listening: [] });
+    expect(hub.ieltsContinuations).toEqual([expect.objectContaining({ id: "ielts-reading:reading-1:unfinished", href: "/ielts/reading/reading-1" })]);
+    expect(hub.continueItems).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 });

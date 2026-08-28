@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import { apiError, apiJson } from "@/server/api-response";
 import { resolveAiRuntime } from "@/server/ai/runtime";
 import { parseReviewEvaluationRequest } from "@/server/ai/review-request";
+import { readProtectedRouteJson } from "@/server/request-security";
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
+  let input;
   try {
-    const input = parseReviewEvaluationRequest(await request.json());
+    input = parseReviewEvaluationRequest(await readProtectedRouteJson(request, "reviewEvaluation"));
+  } catch (error) { return apiError(error, "Malformed request.", 400); }
+  try {
     const provider = resolveAiRuntime(process.env, "review_evaluation");
     const evaluation = await provider.evaluateReview(input);
-    return NextResponse.json({ evaluation, provider: { id: provider.id, model: provider.actionModel } });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Review evaluation failed.";
-    const status = message.includes("require") || message.includes("Unsupported AI_PROVIDER") || message.includes("not configured") ? 503 : message.includes("request") || message.includes("matching") || message.includes("eligible") ? 422 : 502;
-    return NextResponse.json({ error: message }, { status });
-  }
+    return apiJson({ evaluation, provider: { id: provider.id, model: provider.actionModel } });
+  } catch (error) { return apiError(error, "The upstream service is temporarily unavailable.", 503); }
 }

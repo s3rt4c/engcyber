@@ -1,15 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import { apiError, apiJson } from "@/server/api-response";
 import { parseIeltsWritingRequest } from "@/server/ai/ielts-request";
 import { resolveAiRuntime } from "@/server/ai/runtime";
+import { readProtectedRouteJson } from "@/server/request-security";
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
+  let input;
   try {
-    const input = parseIeltsWritingRequest(await request.json());
+    input = parseIeltsWritingRequest(await readProtectedRouteJson(request, "ieltsWritingAnalyze"));
+  } catch (error) { return apiError(error, "Malformed request.", 400); }
+  try {
     const provider = resolveAiRuntime(process.env, "ielts_writing_feedback");
     const generated = await provider.analyzeIeltsWriting(input);
-    return NextResponse.json({ feedback: generated.feedback, model: generated.model });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "IELTS Writing feedback could not be generated.";
-    return NextResponse.json({ error: message }, { status: message.includes("configuration") || message.includes("Unsupported AI_PROVIDER") ? 503 : 422 });
-  }
+    return apiJson({ feedback: generated.feedback, model: generated.model });
+  } catch (error) { return apiError(error, "The upstream service is temporarily unavailable.", 503); }
 }

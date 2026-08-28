@@ -1,20 +1,22 @@
-import { NextRequest, NextResponse } from "next/server";
+import { apiError, apiJson } from "@/server/api-response";
 import { resolveAiRuntime } from "@/server/ai/runtime";
 import { parseWritingAnalysisRequest } from "@/server/ai/writing-request";
 import { WritingAnalysisFailure } from "@/server/ai/writing-diagnostics";
+import { readProtectedRouteJson } from "@/server/request-security";
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
+  let input;
   try {
-    const input = parseWritingAnalysisRequest(await request.json());
+    input = parseWritingAnalysisRequest(await readProtectedRouteJson(request, "writingAnalyze"));
+  } catch (error) { return apiError(error, "Malformed request.", 400); }
+  try {
     const provider = resolveAiRuntime(process.env, "writing_analysis");
     const generated = await provider.analyzeWriting(input);
-    return NextResponse.json(generated);
+    return apiJson(generated);
   } catch (error) {
     if (error instanceof WritingAnalysisFailure) {
-      return NextResponse.json({ error: error.message, ...(process.env.NODE_ENV !== "production" ? { diagnostic: error.diagnostic } : {}) }, { status: 422 });
+      return apiJson({ error: "Writing feedback could not be safely produced." }, { status: 422 });
     }
-    const message = error instanceof Error ? error.message : "Writing analysis failed.";
-    const status = message.includes("require") || message.includes("Unsupported AI_PROVIDER") || message.includes("not configured") ? 503 : message.includes("sanitized") || message.includes("draft") || message.includes("request") || message.includes("feedback") ? 422 : 502;
-    return NextResponse.json({ error: message }, { status });
+    return apiError(error, "The upstream service is temporarily unavailable.", 503);
   }
 }

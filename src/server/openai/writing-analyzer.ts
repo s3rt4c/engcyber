@@ -7,6 +7,7 @@ import { defaultLearnerProfile } from "@/domain/learner-profile";
 import { buildLessonSource } from "@/domain/lesson";
 import { validateInitialWritingFeedback, validateRevisionWritingFeedback, writingInitialFeedbackSchema, writingRevisionFeedbackSchema, type GeneratedWritingFeedback, type WritingAnalysisInput } from "@/domain/writing";
 import { buildWritingInstructions } from "@/server/ai/writing-prompt";
+import { openAiClientOptions } from "@/server/ai/provider-request";
 
 export function writingModelConfiguration(env: Record<string, string | undefined> = process.env): { apiKey: string; model: string } | null {
   const apiKey = env.OPENAI_API_KEY?.trim();
@@ -19,7 +20,7 @@ export async function analyzeWritingDraft(input: WritingAnalysisInput, env: Reco
   const configuration = writingModelConfiguration(env);
   if (!configuration) throw new Error("Writing analysis is not configured. Add OPENAI_API_KEY and OPENAI_LESSON_MODEL to .env.local.");
   const source = input.source ?? buildLessonSource(input.content.title, input.content.sanitizedText);
-  const response = await new OpenAI({ apiKey: configuration.apiKey }).responses.parse({
+  const response = await new OpenAI(openAiClientOptions(configuration.apiKey)).responses.parse({
     model: configuration.model,
     store: false,
     max_output_tokens: 2_500,

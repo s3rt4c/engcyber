@@ -132,9 +132,10 @@ The two capabilities (`ielts_reading_generation`, `ielts_writing_feedback`) reus
 
 ## M12 IELTS-oriented Listening foundations
 
-M0–M11 are accepted. M12 is implemented and awaiting merge; M13 has not started. M12 adds a framework-independent `src/domain/ielts-listening.ts` and immutable application-owned `src/domain/ielts-listening-bank.ts`. The dedicated `IeltsListeningSession` only references a definition ID; scripts and transcripts stay in application content rather than browser persistence. `/ielts/listening` uses the existing browser-local `IeltsPracticeStore` to list, start, resume, and repeat the eight definitions, while `/ielts/listening/[sessionId]` plays structured turns, saves answers, and freezes a completed review. The existing `BrowserSpeechSynthesis` seam is extended for safely queued turns rather than creating a second browser audio layer.
+M0–M12 are accepted and merged. M12 adds a framework-independent `src/domain/ielts-listening.ts` and immutable application-owned `src/domain/ielts-listening-bank.ts`. The dedicated `IeltsListeningSession` only references a definition ID; scripts and transcripts stay in application content rather than browser persistence. `/ielts/listening` uses the existing browser-local `IeltsPracticeStore` to list, start, resume, and repeat the eight definitions, while `/ielts/listening/[sessionId]` plays structured turns, saves answers, and freezes a completed review. The existing `BrowserSpeechSynthesis` seam is extended for safely queued turns rather than creating a second browser audio layer.
 
 ```
+
 application-owned listening definition --> local session reference + answers
                                      --> BrowserSpeechSynthesis queued turns
                                      --> explicit local Submit
@@ -142,5 +143,9 @@ application-owned listening definition --> local session reference + answers
                                      --> IeltsPracticeStore listening collection
                                      --> Progress evidence / Active Day / M8 Listening balance
 ```
+
+## M13 browser-local backup boundary
+
+`src/domain/backup.ts` owns the strict, framework-independent manifest/schema, version seam, count-only preview, fixed caps, and cross-store invariants. `src/client/local-backup.ts` decodes the eight existing localStorage envelopes without mutation, normalizes explicit legacy phrase records, emits a canonical manifest, and serializes only current envelope shapes. `src/client/backup-storage.ts` owns the exact-key snapshot/write/readback/rollback transaction; it never enumerates or clears unrelated browser storage. `/backup` is a client route with browser `File` and download APIs only, so it has no server/provider/network path. Import parsing/validation completes before preview; only explicit Replace calls the transaction and returns to `/backup?restored=1` after success.
 
 No M12 path calls an API route, AI provider, network audio service, microphone, recorder, STT, or speech-recognition API. Browser synthesis unavailability remains a visible local failure state and never substitutes an early transcript. SpeechSynthesis invocation and `onstart` were verified by browser automation; physical audible output was not independently verified, the retained non-blocking M12 PASS WITH NOTE. Completed Listening is direct evidence for the existing M8 Listening balance; it does not create or alter M5 lesson-derived dictation/shadowing records. There is no Speaking route, state, provider capability, scoring, or analytics. Speaking remains external to EngCyber through ChatGPT Live / Voice.

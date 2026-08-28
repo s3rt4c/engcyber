@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Content } from "@/domain/models";
 import { ReadingView } from "@/components/reading-view";
+import { safeExternalHttpUrl } from "@/domain/safe-link";
 type SerializedContent = Omit<Content, "publishedAt"> & { publishedAt: string | null };
 
 export function ReadUrl({ url, title, id, sourceName, publishedAt, category }: { url: string; title: string; id: string; sourceName: string; publishedAt?: string; category: "cybersecurity_news" | "artificial_intelligence" | "my_content" }) {
@@ -15,5 +16,6 @@ export function ReadUrl({ url, title, id, sourceName, publishedAt, category }: {
       .catch(() => setError("Article import failed."));
   }, [url, title, id, publishedAt, category]);
   if (content) return <ReadingView content={content} sourceName={sourceName} />;
-  return <main className="min-h-screen bg-slate-950 p-10 text-slate-100"><Link className="text-cyan-300" href="/">← Discover</Link><p className="mt-8">{error || "Importing a readable article…"}</p>{error && <a className="mt-4 inline-block text-cyan-300 underline" href={url} target="_blank" rel="noreferrer">Open original article</a>}</main>;
+  const safeUrl = safeExternalHttpUrl(url);
+  return <main className="min-h-screen bg-slate-950 p-10 text-slate-100"><Link className="text-cyan-300" href="/">← Discover</Link><p className="mt-8">{error || "Importing a readable article…"}</p>{error && safeUrl && <a className="mt-4 inline-block text-cyan-300 underline" href={safeUrl} target="_blank" rel="noreferrer">Open original article</a>}</main>;
 }

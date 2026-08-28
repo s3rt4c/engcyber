@@ -76,7 +76,7 @@ export function createGeminiProvider(configuration: ResolvedAiProvider, client: 
       const action = buildExplicitActionInput(input);
       let response: Pick<GenerateContentResponse, "text" | "usageMetadata">;
       try {
-        response = (await retryTransientAiOperation(() => client.models.generateContent({
+        response = (await retryTransientAiOperation(() => withAiAttemptTimeout(client.models.generateContent({
           model: configuration.actionModel,
           contents: actionContents(action),
           config: {
@@ -84,7 +84,7 @@ export function createGeminiProvider(configuration: ResolvedAiProvider, client: 
             maxOutputTokens: 512,
             thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           },
-        }))).value;
+        })))).value;
       } catch (error) { throw new Error(geminiProviderErrorMessage(error)); }
       const result = response.text?.trim();
       if (!result) throw new Error("Gemini returned no sentence-action text.");
@@ -96,7 +96,7 @@ export function createGeminiProvider(configuration: ResolvedAiProvider, client: 
       if (source.text.replace(/^Title:.*\n*/u, "").trim().length < 240) throw new Error("This article is too short to create a useful lesson.");
       let response: Pick<GenerateContentResponse, "text" | "usageMetadata">;
       try {
-        response = (await retryTransientAiOperation(() => client.models.generateContent({
+        response = (await retryTransientAiOperation(() => withAiAttemptTimeout(client.models.generateContent({
           model: configuration.lessonModel,
           contents: buildLessonInstructions(learnerProfile, source),
           config: {
@@ -106,7 +106,7 @@ export function createGeminiProvider(configuration: ResolvedAiProvider, client: 
             responseJsonSchema: geminiLessonJsonSchema,
             thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
           },
-        }))).value;
+        })))).value;
       } catch (error) { throw new Error(geminiProviderErrorMessage(error)); }
       if (!response.text) throw new Error("Gemini returned no structured lesson.");
       let parsed: unknown;

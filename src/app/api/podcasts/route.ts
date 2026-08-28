@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+import { apiError, apiJson } from "@/server/api-response";
 import { listPodcasts } from "@/server/podcasts/service";
 
 export async function GET() {
-  try { return NextResponse.json(await listPodcasts()); }
-  catch { return NextResponse.json({ episodes: [], error: "Podcast discovery is temporarily unavailable." }, { status: 502 }); }
+  try { return apiJson(await listPodcasts()); }
+  catch (error) { return apiError(error, "Podcast discovery is temporarily unavailable.", 502); }
 }

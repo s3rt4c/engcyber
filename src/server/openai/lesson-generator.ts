@@ -7,6 +7,7 @@ import type { LessonGenerator } from "@/domain/boundaries";
 import { defaultLearnerProfile, type LearnerProfile } from "@/domain/learner-profile";
 import { buildLessonSource, lessonDraftSchema, validateLessonDraft, type GeneratedLesson } from "@/domain/lesson";
 import { buildLessonInstructions } from "@/server/ai/lesson-prompt";
+import { openAiClientOptions } from "@/server/ai/provider-request";
 
 export { buildLessonInstructions } from "@/server/ai/lesson-prompt";
 
@@ -26,7 +27,7 @@ export async function generateLessonDraft(content: Content, options: { learnerPr
   if (!config) throw new Error("Lesson generation is not configured. Add OPENAI_API_KEY and OPENAI_LESSON_MODEL to .env.local.");
   const source = buildLessonSource(content.title, content.sanitizedText);
   if (source.text.replace(/^Title:.*\n*/u, "").trim().length < 240) throw new Error("This article is too short to create a useful lesson.");
-  const response = await new OpenAI({ apiKey: config.apiKey }).responses.parse({
+  const response = await new OpenAI(openAiClientOptions(config.apiKey)).responses.parse({
     model: config.model,
     store: false,
     max_output_tokens: 3_000,

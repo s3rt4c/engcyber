@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+import { apiError, apiJson } from "@/server/api-response";
 import { discoverCuratedFeeds } from "@/server/discovery/feeds";
 
 export async function GET() {
-  try { return NextResponse.json(await discoverCuratedFeeds()); }
-  catch { return NextResponse.json({ items: [], sources: [], error: "Discovery is temporarily unavailable. Try again shortly." }, { status: 502 }); }
+  try { return apiJson(await discoverCuratedFeeds()); }
+  catch (error) { return apiError(error, "Discovery is temporarily unavailable. Try again shortly.", 502); }
 }

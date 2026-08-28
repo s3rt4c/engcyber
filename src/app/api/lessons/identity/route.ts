@@ -1,13 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { apiError, apiJson } from "@/server/api-response";
 import { createLessonIdentity, parseSanitizedLessonContent } from "@/server/lessons/request";
+import { readProtectedRouteJson } from "@/server/request-security";
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const body = await request.json() as { content?: unknown };
+    const body = await readProtectedRouteJson<{ content?: unknown }>(request, "lessonIdentity");
     const identity = createLessonIdentity(parseSanitizedLessonContent(body.content));
-    return NextResponse.json(identity);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Lesson identity failed.";
-    return NextResponse.json({ error: message }, { status: message.includes("not configured") ? 503 : 422 });
-  }
+    return apiJson(identity);
+  } catch (error) { return apiError(error, "Malformed request.", 400); }
 }

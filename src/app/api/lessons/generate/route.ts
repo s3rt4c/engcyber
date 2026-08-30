@@ -3,6 +3,7 @@ import { defaultLearnerProfile } from "@/domain/learner-profile";
 import { lessonPromptVersion, lessonSchemaVersion } from "@/domain/lesson";
 import { apiError, apiJson } from "@/server/api-response";
 import { resolveAiRuntime } from "@/server/ai/runtime";
+import { withAiAdmission } from "@/server/abuse-runtime";
 import { createLessonIdentity, parseSanitizedLessonContent } from "@/server/lessons/request";
 import { readProtectedRouteJson } from "@/server/request-security";
 
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
   try {
     const identity = createLessonIdentity(content);
     const provider = resolveAiRuntime(process.env, "lesson_generation");
-    const generated = await provider.generateLesson(content);
+    const generated = await withAiAdmission(request, async () => await provider.generateLesson(content));
     return apiJson({ lesson: {
       id: randomUUID(), contentId: content.id, contentFingerprint: content.contentFingerprint,
       generationFingerprint: identity.generationFingerprint, schemaVersion: lessonSchemaVersion,

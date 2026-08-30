@@ -12,7 +12,9 @@ M16 implements an application security envelope. It does not approve EngCyber fo
 
 ## Deployment blockers
 
-EngCyber must remain trusted-local or private-access until a hosting/platform/reverse-proxy access boundary and deployment-grade distributed rate limiting/concurrency controls are selected and configured. Same-origin validation is not authentication and does not stop direct HTTP clients that reproduce accepted headers. No custom login, Redis/KV limiter, account database, server learner store, cloud sync, CSP enforcement, or HSTS configuration is included in M16.
+M17 selects Cloudflare Access in front of a Cloudflare-proxied custom hostname and Vercel origin. Next.js verifies Cloudflare Access JWTs itself so a direct Vercel hostname cannot bypass the gateway, and Upstash Redis supplies per-subject distributed rate buckets and at most two concurrently admitted EngCyber AI operations. Gemini work may outlive client-side timeout/cancellation, so the leases do not assert provider-side cancellation or hard Gemini-backend concurrency. **The repository is ready for the selected private-deployment architecture, but external Cloudflare Access, DNS, Vercel production configuration, Upstash production state, HSTS, CSP measurement, and deployment smoke acceptance are still pending.** Same-origin validation remains defense in depth, not authentication.
+
+Production Access mode fails closed for missing configuration, missing/invalid JWTs, or unavailable signing-key verification. Provider-cost and external-fetch routes fail closed with safe 503 when Upstash control state is unavailable. No custom login, account database, server learner store, cloud sync, CSP enforcement, application HSTS configuration, or public multi-user model is included.
 
 ## Data boundaries
 

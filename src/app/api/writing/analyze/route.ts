@@ -1,5 +1,6 @@
 import { apiError, apiJson } from "@/server/api-response";
 import { resolveAiRuntime } from "@/server/ai/runtime";
+import { withAiAdmission } from "@/server/abuse-runtime";
 import { parseWritingAnalysisRequest } from "@/server/ai/writing-request";
 import { WritingAnalysisFailure } from "@/server/ai/writing-diagnostics";
 import { readProtectedRouteJson } from "@/server/request-security";
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
   } catch (error) { return apiError(error, "Malformed request.", 400); }
   try {
     const provider = resolveAiRuntime(process.env, "writing_analysis");
-    const generated = await provider.analyzeWriting(input);
+    const generated = await withAiAdmission(request, async () => await provider.analyzeWriting(input));
     return apiJson(generated);
   } catch (error) {
     if (error instanceof WritingAnalysisFailure) {

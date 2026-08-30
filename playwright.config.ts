@@ -20,6 +20,6 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { NEXT_TELEMETRY_DISABLED: "1", ENGCYBER_APP_ORIGIN: baseURL },
+    env: { NEXT_TELEMETRY_DISABLED: "1", ENGCYBER_APP_ORIGIN: baseURL, ENGCYBER_ACCESS_MODE: "local", ENGCYBER_LOCAL_TEST_MODE: "true" },
   },
 });

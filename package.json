@@ -20,11 +20,11 @@
     "cheerio": "^1.2.0",
     "fast-xml-parser": "^5.11.0",
     "jose": "^6.2.10",
-    "next": "16.3.3",
+    "next": "16.4.1",
     "openai": "^7.5.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "zod": "^4.4.3"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.51.1",
@@ -33,7 +33,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.2",
+    "eslint-config-next": "16.4.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.11"

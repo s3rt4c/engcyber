@@ -363,6 +363,12 @@ export function wordCountForWriting(draft: string): number {
   return normalized(draft).split(/\s+/u).filter(Boolean).length;
 }
 
+/** Canonical saved-lesson target, with an explicit ID tie instead of envelope order. */
+export function selectWritingSessionForLesson(sessions: readonly WritingSession[], lessonId: string): WritingSession | null {
+  return sessions.filter((session) => session.lessonId === lessonId)
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id))[0] ?? null;
+}
+
 export function writingDraftProblem(draft: string): string | null {
   if (!normalized(draft)) return "Write a response before requesting feedback.";
   if (wordCountForWriting(draft) < minimumUsableWritingWords) return "Write a longer response before requesting feedback so the feedback can be useful.";

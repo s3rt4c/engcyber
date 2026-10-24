@@ -152,6 +152,17 @@ function localDay(value: string, timeZone: ProgressTimeZone): string | null {
   }
 }
 
+/** Shared learner-local schedule counts; deriving them never advances a schedule. */
+export function reviewCurrentState(items: readonly ReviewItem[], now: string, timeZone: ProgressTimeZone) {
+  const nowMs = validInstant(now)?.getTime();
+  const nowDay = localDay(now, timeZone);
+  return {
+    dueNow: items.filter((item) => item.status === "scheduled" && nowMs !== undefined && (validInstant(item.dueAt)?.getTime() ?? Infinity) <= nowMs).length,
+    overdue: items.filter((item) => item.status === "scheduled" && (() => { const day = localDay(item.dueAt, timeZone); return day !== null && nowDay !== null && day < nowDay; })()).length,
+    masteredItems: items.filter((item) => item.status === "mastered").length,
+  };
+}
+
 function addDays(day: string, offset: number): string {
   const parsed = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/u.exec(day);
   if (!parsed) return day;
@@ -288,11 +299,7 @@ export function buildProgressSnapshot(source: ProgressSourceData, options: Progr
   for (const pattern of source.errorPatterns) current[pattern.status] += 1;
   const topPatterns = [...source.errorPatterns].sort((left, right) => right.priority - left.priority || right.occurrenceCount - left.occurrenceCount || right.lastSeenAt.localeCompare(left.lastSeenAt) || left.patternKey.localeCompare(right.patternKey)).slice(0, 5).map((pattern) => ({ label: reviewPatternLabel(pattern.patternKey), patternKey: pattern.patternKey, occurrenceCount: pattern.occurrenceCount, status: pattern.status, priority: pattern.priority }));
 
-  const dueNow = source.reviewItems.filter((item) => {
-    const dueAt = validInstant(item.dueAt);
-    return item.status === "scheduled" && dueAt !== null && dueAt.getTime() <= nowMs;
-  }).length;
-  const overdue = source.reviewItems.filter((item) => item.status === "scheduled" && (() => { const day = localDay(item.dueAt, options.timeZone); return day !== null && day < nowDay; })()).length;
+  const reviewCurrent = reviewCurrentState(source.reviewItems, options.now, options.timeZone);
   const correct = reviewEvents.filter((event) => event.verdict === "correct").length;
   const incorrect = reviewEvents.filter((event) => event.verdict === "incorrect").length;
   const uncertain = reviewEvents.filter((event) => event.verdict === "uncertain").length;
@@ -324,7 +331,7 @@ export function buildProgressSnapshot(source: ProgressSourceData, options: Progr
   const balance: LearningBalance = { lessons: lessons.length, writing: analyses.length + revisions.length, review: reviewEvents.length, listening: attempts.length + shadowingEvents.length + ieltsListening.length };
   const ielts: IeltsProgressSummary = { reading: { completed: ieltsReading.length, correct: ieltsReading.reduce((total, practice) => total + practice.questions.filter((question) => practice.answers[question.id] === (question.type === "multiple_choice" ? question.correctOptionId : question.answer)).length, 0), total: ieltsReading.reduce((total, practice) => total + practice.questions.length, 0) }, writing: { initialAnalyses: ieltsInitial.length, revisionReviews: ieltsRevision.length, timedPractices: [...ieltsReading, ...ieltsInitial, ...ieltsRevision].filter((entry) => entry.elapsedSeconds !== null).length }, listening: { completed: ieltsListening.length, correct: ieltsListening.reduce((total, session) => total + (session.correctCount ?? 0), 0), total: ieltsListening.reduce((total, session) => total + (session.totalCount ?? 0), 0) } };
   const writing: WritingProgressSummary = { analyses: analyses.length, revisions: revisions.length, highConfidenceFindings, averageHighConfidenceFindings: analyses.length ? highConfidenceFindings / analyses.length : null, resolvedInRevisions: revisionTotals.resolved, remainingInRevisions: revisionTotals.remaining, resolutionRate: evaluated ? revisionTotals.resolved / evaluated : null };
-  const review: ReviewProgressSummary = { current: { dueNow, overdue, masteredItems: source.reviewItems.filter((item) => item.status === "mastered").length }, events: { attempts: reviewEvents.length, scheduled, practiceNow, correct, incorrect, uncertain, successRate: correct + incorrect ? correct / (correct + incorrect) : null } };
+  const review: ReviewProgressSummary = { current: reviewCurrent, events: { attempts: reviewEvents.length, scheduled, practiceNow, correct, incorrect, uncertain, successRate: correct + incorrect ? correct / (correct + incorrect) : null } };
   const vocabularyCurrent = vocabularyReviewCurrentState(source.vocabularyReviewItems, source.vocabularyPhraseIds.map((id) => ({ id })), options.now, options.timeZone);
   const vocabularyCorrect = vocabularyEvents.filter((event) => event.outcome === "correct").length;
   const vocabularyIncorrect = vocabularyEvents.filter((event) => event.outcome === "incorrect").length;

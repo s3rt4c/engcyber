@@ -3,14 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { createBrowserErrorMemoryStore } from "@/client/local-error-memory-store";
-import { createBrowserLessonStore } from "@/client/local-lesson-store";
-import { createBrowserListeningStore } from "@/client/local-listening-store";
-import { createBrowserIeltsPracticeStore } from "@/client/local-ielts-practice-store";
-import { createBrowserPhraseStore } from "@/client/local-phrase-store";
-import { createBrowserReviewStore } from "@/client/local-review-store";
-import { createBrowserVocabularyReviewStore } from "@/client/local-vocabulary-review-store";
-import { createBrowserWritingSessionStore } from "@/client/local-writing-session-store";
+import { createBrowserHomeReaders } from "@/client/home-learning-readers";
 import { buildDailyHub, loadLocalLearningData, type DailyHub } from "@/client/local-learning-loaders";
 
 export function DailyLearningHub() {
@@ -18,12 +11,17 @@ export function DailyLearningHub() {
   useEffect(() => {
     let active = true;
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-    void loadLocalLearningData({ lessonStore: createBrowserLessonStore(), phraseStore: createBrowserPhraseStore(), writingSessionStore: createBrowserWritingSessionStore(), errorMemoryStore: createBrowserErrorMemoryStore(), reviewStore: createBrowserReviewStore(), vocabularyReviewStore: createBrowserVocabularyReviewStore(), listeningStore: createBrowserListeningStore(), ieltsPracticeStore: createBrowserIeltsPracticeStore() })
+    void loadLocalLearningData(createBrowserHomeReaders())
       .then((data) => buildDailyHub(data, { now: new Date().toISOString(), timeZone }))
       .then((next) => { if (active) setHub(next); });
     return () => { active = false; };
   }, []);
+  return <DailyLearningHubContent hub={hub} />;
+}
+
+export function DailyLearningHubContent({ hub }: { readonly hub: DailyHub | null }) {
   return <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100"><div className="mx-auto max-w-4xl"><p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">EngCyber</p><h1 className="mt-2 text-3xl font-semibold">Today</h1><p className="mt-3 max-w-2xl text-slate-300">Choose one useful next step from the learning work saved in this browser.</p>{!hub ? <p className="mt-8 text-slate-400">Loading your browser-local learning activity…</p> : <div className="mt-8 space-y-8">
+    <section aria-labelledby="training-heading" className="rounded-xl border border-cyan-400/40 bg-slate-900 p-5"><h2 className="text-xl font-semibold" id="training-heading">Today&apos;s training</h2><p className="mt-2 text-sm text-slate-400">Due reviews come first, followed by saved continuations. All activities remain available below.</p>{hub.trainingQueue.length ? <ol className="mt-4 grid gap-3">{hub.trainingQueue.map((item) => <li key={item.id}><Link className="block rounded-lg border border-slate-700 bg-slate-950 p-4 text-cyan-200 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300" href={item.href}><span className="block font-medium">{item.title}</span><span className="mt-1 block text-sm text-slate-300">{item.reason}</span></Link></li>)}</ol> : <p className="mt-4 text-slate-300">You&apos;re caught up on saved practice. Choose something new below.</p>}</section>
     <section aria-label="Continue"><h2 className="text-xl font-semibold">Continue</h2>{hub.continueItems.length ? <div className="mt-3 grid gap-3">{hub.continueItems.map((item) => <Link className="rounded-xl border border-slate-800 bg-slate-900 p-4 text-cyan-200 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300" href={item.href} key={`${item.kind}-${item.href}`}>{item.label}</Link>)}</div> : <p className="mt-3 text-sm text-slate-400">No saved activity needs a specific next step yet.</p>}</section>
     {hub.ieltsContinuations.length > 0 && <section aria-labelledby="continue-ielts-heading"><h2 className="text-xl font-semibold" id="continue-ielts-heading">Continue IELTS Practice</h2><div className="mt-3 grid gap-3">{hub.ieltsContinuations.map((item) => <Link className="rounded-xl border border-slate-800 bg-slate-900 p-4 text-cyan-200 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300" href={item.href} key={item.id}><span className="block font-medium">{item.title}</span><span className="mt-1 block text-sm text-slate-400">{item.subtitle}</span></Link>)}</div></section>}
     <section aria-label="Review"><h2 className="text-xl font-semibold">Review</h2><p className="mt-3 text-slate-300">{hub.review.overdue ? `${hub.review.overdue} overdue` : "No overdue reviews"} · {hub.review.dueNow} due now</p><Link className="mt-3 inline-flex rounded bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-300" href="/review">Start Review</Link></section>

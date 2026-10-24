@@ -59,7 +59,7 @@ function isSchedulable(pattern: PersonalErrorPattern): boolean {
   return pattern.status === "needs_practice" || pattern.status === "improving" || pattern.status === "returned";
 }
 
-function eligibleFor(patternKey: string, occurrences: readonly ErrorOccurrence[]): ErrorOccurrence[] {
+export function eligibleReviewOccurrences(patternKey: string, occurrences: readonly ErrorOccurrence[]): ErrorOccurrence[] {
   return occurrences.filter((occurrence) => occurrence.patternKey === patternKey && !occurrence.dismissed && occurrence.confidence >= errorMemoryConfidenceMinimum)
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id));
 }
@@ -81,7 +81,7 @@ export function synchronizeReviewItems(patterns: readonly PersonalErrorPattern[]
 
   const synced: ReviewItem[] = [];
   for (const [patternKey, pattern] of [...patternsByKey.entries()].sort(([left], [right]) => left.localeCompare(right))) {
-    const candidates = eligibleFor(patternKey, occurrences);
+    const candidates = eligibleReviewOccurrences(patternKey, occurrences);
     if (!candidates.length) continue;
     const existing = onePerPattern.get(patternKey);
     if (!existing && !isSchedulable(pattern)) continue;

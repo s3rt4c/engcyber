@@ -23,7 +23,7 @@ function listening(lessonFingerprint: string, completedAt: string | null): Liste
 }
 
 function data(overrides: Partial<LocalLearningData> = {}): LocalLearningData {
-  return { lessons: [], phrases: [], writingSessions: [], errorPatterns: [], reviewItems: [], reviewEvents: [], vocabularyReviewItems: [], vocabularyReviewEvents: [], listening: { sessions: [], attempts: [], shadowingEvents: [], playbackRate: 1 }, ielts: { reading: [], writing: [], listening: [] }, ...overrides };
+  return { lessons: [], phrases: [], writingSessions: [], errorPatterns: [], errorOccurrences: [], reviewItems: [], reviewEvents: [], vocabularyReviewItems: [], vocabularyReviewEvents: [], listening: { sessions: [], attempts: [], shadowingEvents: [], playbackRate: 1 }, ielts: { reading: [], writing: [], listening: [] }, ...overrides };
 }
 
 describe("M9 local learning loaders", () => {

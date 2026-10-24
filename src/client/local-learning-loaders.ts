@@ -1,12 +1,16 @@
-import { findResumableListeningLesson } from "@/client/listening-flow";
+import { findResumableListeningLesson, findResumableListeningSession } from "@/client/listening-flow";
 import type { ErrorMemoryStore, IeltsPracticeStore, LessonStore, ListeningStore, PhraseStore, ReviewStore, SavedPhrase, VocabularyReviewStore, WritingSessionStore } from "@/domain/boundaries";
 import type { StoredLesson } from "@/domain/lesson";
-import { buildProgressSnapshot, type FocusAction, type ProgressSnapshot } from "@/domain/progress";
+import { buildProgressSnapshot, reviewCurrentState, type FocusAction, type ProgressSnapshot } from "@/domain/progress";
 import { selectIeltsContinuations, type IeltsContinuationItem } from "@/domain/ielts-continuity";
 import type { ListeningSnapshot } from "@/client/local-listening-store";
-import type { PersonalErrorPattern, WritingSession } from "@/domain/writing";
+import type { ErrorOccurrence, PersonalErrorPattern, WritingSession } from "@/domain/writing";
+import { selectWritingSessionForLesson } from "@/domain/writing";
 import type { ReviewEvent, ReviewItem } from "@/domain/review";
+import { eligibleReviewOccurrences, queueReviewItems } from "@/domain/review";
 import type { VocabularyReviewEvent, VocabularyReviewItem } from "@/domain/vocabulary-review";
+import { vocabularyReviewCurrentState } from "@/domain/vocabulary-review";
+import { selectDailyTraining, type DailyTrainingItem } from "@/domain/daily-training";
 import type { IeltsReadingPractice, IeltsWritingSession } from "@/domain/ielts";
 import type { IeltsListeningSession } from "@/domain/ielts-listening";
 
@@ -15,6 +19,7 @@ export interface LocalLearningData {
   readonly phrases: readonly SavedPhrase[];
   readonly writingSessions: readonly WritingSession[];
   readonly errorPatterns: readonly PersonalErrorPattern[];
+  readonly errorOccurrences: readonly ErrorOccurrence[];
   readonly reviewItems: readonly ReviewItem[];
   readonly reviewEvents: readonly ReviewEvent[];
   readonly vocabularyReviewItems: readonly VocabularyReviewItem[];
@@ -53,7 +58,7 @@ export async function loadLocalLearningData(readers: LocalLearningReaders): Prom
     readers.ieltsPracticeStore ? settled(() => readers.ieltsPracticeStore!.listWriting(), []) : Promise.resolve([]),
     readers.ieltsPracticeStore ? settled(() => readers.ieltsPracticeStore!.listListening(), []) : Promise.resolve([]),
   ]);
-  return { lessons, phrases, writingSessions, errorPatterns: errorMemory.patterns, reviewItems: review.items, reviewEvents: review.events, vocabularyReviewItems: vocabularyReview.items, vocabularyReviewEvents: vocabularyReview.events, listening: { sessions: [...listening.sessions], attempts: [...listening.attempts], shadowingEvents: [...listening.shadowingEvents], playbackRate: listening.playbackRate }, ielts: { reading: ieltsReading, writing: ieltsWriting, listening: ieltsListening } };
+  return { lessons, phrases, writingSessions, errorPatterns: errorMemory.patterns, errorOccurrences: errorMemory.occurrences, reviewItems: review.items, reviewEvents: review.events, vocabularyReviewItems: vocabularyReview.items, vocabularyReviewEvents: vocabularyReview.events, listening: { sessions: [...listening.sessions], attempts: [...listening.attempts], shadowingEvents: [...listening.shadowingEvents], playbackRate: listening.playbackRate }, ielts: { reading: ieltsReading, writing: ieltsWriting, listening: ieltsListening } };
 }
 
 export type WritingResumeAction = { readonly label: "Revise writing" | "Review revision feedback" | "Writing feedback available"; readonly enabled: boolean };
@@ -106,6 +111,7 @@ export function focusHref(action: FocusAction): "/review" | "/vocabulary" | "/li
 }
 
 export interface DailyHub {
+  readonly trainingQueue: readonly DailyTrainingItem[];
   readonly continueItems: readonly { readonly kind: "listening" | "writing"; readonly label: string; readonly href: string }[];
   readonly ieltsContinuations: readonly IeltsContinuationItem[];
   readonly review: { readonly dueNow: number; readonly overdue: number };
@@ -123,7 +129,30 @@ export function buildDailyHub(data: LocalLearningData, options: { readonly now: 
   for (const entry of library.lessons) {
     if (entry.writingAction?.enabled) continuations.push({ kind: "writing", label: entry.writingAction.label, href: `/library/lessons/${encodeURIComponent(entry.lesson.id)}` });
   }
+  // Qualification uses the same accepted owners/selectors, without synchronizing stores.
+  const current = (value: string) => Number.isFinite(Date.parse(value)) && Date.parse(value) <= Date.parse(options.now);
+  const currentRecord = (record: { readonly createdAt: string; readonly updatedAt: string }) => current(record.createdAt) && current(record.updatedAt);
+  const currentLessons = data.lessons.filter((lesson) => current(lesson.createdAt));
+  const occurrences = data.errorOccurrences.filter((entry) => current(entry.createdAt));
+  const patterns = data.errorPatterns.filter((pattern) => pattern.status !== "mastered" && eligibleReviewOccurrences(pattern.patternKey, occurrences).length > 0);
+  const reviewItems = queueReviewItems(data.reviewItems.filter(currentRecord), patterns, options.now, Infinity);
+  // Qualify the actual destination's target, never an older session hidden behind it.
+  const writingTargets = currentLessons.flatMap((lesson) => {
+    const target = selectWritingSessionForLesson(data.writingSessions, lesson.id);
+    return target && currentRecord(target) ? [target] : [];
+  });
+  const trainingLibrary = buildLibrary({ ...data, lessons: currentLessons, writingSessions: writingTargets });
+  const listeningTarget = resumeLesson && findResumableListeningSession(data.listening.sessions, resumeLesson);
+  const trainingListening = resumeLesson && current(resumeLesson.createdAt) && listeningTarget && currentRecord(listeningTarget) ? resumeLesson : null;
+  const trainingQueue = selectDailyTraining({
+    review: reviewCurrentState(reviewItems, options.now, options.timeZone),
+    vocabulary: vocabularyReviewCurrentState(data.vocabularyReviewItems.filter(currentRecord), data.phrases.filter((phrase) => current(phrase.savedAt)), options.now, options.timeZone),
+    writing: trainingLibrary.lessons.flatMap((entry) => entry.writingAction?.enabled ? [{ id: entry.lesson.id, title: entry.writingAction.label, href: `/library/lessons/${encodeURIComponent(entry.lesson.id)}`, createdAt: entry.lesson.createdAt }] : []),
+    ielts: selectIeltsContinuations({ reading: data.ielts.reading.filter(currentRecord), writing: data.ielts.writing.filter(currentRecord), listening: data.ielts.listening.filter(currentRecord) }),
+    listening: trainingListening ? { href: `/listening?lesson=${encodeURIComponent(trainingListening.generationFingerprint)}` } : null,
+  }, options);
   return {
+    trainingQueue,
     continueItems: continuations,
     ieltsContinuations: selectIeltsContinuations(data.ielts, 3),
     review: { dueNow: snapshot.review.current.dueNow, overdue: snapshot.review.current.overdue },

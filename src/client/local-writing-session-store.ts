@@ -1,4 +1,4 @@
-import { writingSessionSchema, type WritingSession } from "@/domain/writing";
+import { selectWritingSessionForLesson, writingSessionSchema, type WritingSession } from "@/domain/writing";
 
 const key = "engcyber.writing-sessions.v1";
 const version = "m3-writing-sessions-v1";
@@ -50,7 +50,7 @@ export class LocalWritingSessionStore {
   }
 
   async getByLesson(lessonId: string): Promise<WritingSession | null> {
-    return (await this.list()).find((session) => session.lessonId === lessonId) ?? null;
+    return selectWritingSessionForLesson(await this.list(), lessonId);
   }
 
   async save(session: WritingSession): Promise<boolean> {

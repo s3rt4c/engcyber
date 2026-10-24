@@ -11,9 +11,13 @@ export function findResumableListeningLesson(input: { readonly sessions: readonl
   return undefined;
 }
 
-export function createOrResumeListeningSession(input: { readonly sessions: readonly ListeningSession[]; readonly lesson: StoredLesson; readonly now: string; readonly createId: () => string; readonly sourceText?: string; readonly fresh?: boolean }): { readonly session: ListeningSession; readonly resumed: boolean } {
-  const existing = input.sessions.filter((session) => session.lessonGenerationFingerprint === input.lesson.generationFingerprint && session.completedAt === null)
+export function findResumableListeningSession(sessions: readonly ListeningSession[], lesson: StoredLesson): ListeningSession | undefined {
+  return sessions.filter((session) => session.lessonGenerationFingerprint === lesson.generationFingerprint && session.completedAt === null)
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id))[0];
+}
+
+export function createOrResumeListeningSession(input: { readonly sessions: readonly ListeningSession[]; readonly lesson: StoredLesson; readonly now: string; readonly createId: () => string; readonly sourceText?: string; readonly fresh?: boolean }): { readonly session: ListeningSession; readonly resumed: boolean } {
+  const existing = findResumableListeningSession(input.sessions, input.lesson);
   if (existing && !input.fresh) return { session: existing, resumed: true };
   return { session: createListeningSession({ id: input.createId(), lesson: input.lesson, createdAt: input.now, sourceText: input.sourceText }), resumed: false };
 }
